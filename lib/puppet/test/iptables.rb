@@ -2,10 +2,9 @@
 
 $:.unshift("../../lib") if __FILE__ =~ /\.rb$/
 
-require 'puppettest'
+require 'test/unit'
 
 class TestIPTables < Test::Unit::TestCase
-    include PuppetTest
 
     # location where iptables binaries are to be found
     @@iptables_dir = "/sbin"
