@@ -65,8 +65,16 @@ module Puppet
     @doc = "Manipulate iptables rules"
 
     newparam(:name) do
-      desc "The name of the resource"
+      desc "The name of the rule."
       isnamevar
+
+      # Keep rule names simple
+      validate do |value|
+        if value !~ /^[a-zA-Z0-9 \-_]+$/ do
+          self.fail "Not a valid rule name. Make sure it contains ASCII " \
+            "alphanumeric, spaces, hyphens or underscoares." 
+        end
+      end
     end
 
     newparam(:chain) do
