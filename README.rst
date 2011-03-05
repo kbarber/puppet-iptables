@@ -44,19 +44,18 @@ Example::
     icmp  => "any",
     jump  => "ACCEPT",
   }
-  iptables { "another iptables rule":
+  iptables { "002 another iptables rule":
     proto       => "tcp",
     dport       => "80",
     source      => "192.168.0.0/16",
     destination => "192.168.1.11/32",
     jump        => "ACCEPT",
   }
-  iptables { "my iptables rule":
+  iptables { "003 my iptables rule":
     proto       => "tcp",
     dport       => "80",
     jump        => "DROP",
   }
-
 
   file { "/etc/puppet/iptables/pre.iptables":
     content => "-A INPUT -s 10.0.0.1 -p tcp -m tcp --dport 22 -j ACCEPT",
@@ -66,8 +65,6 @@ Example::
     content => "-A INPUT -j REJECT --reject-with icmp-port-unreachable",
     mode    => 0600,
   }
-
-
 
 This will run the following commands, in this exact order::
 
@@ -93,8 +90,6 @@ If you are using standard path locations, then just clone this git repository in
   cd /etc/puppet/modules
   git clone git://github.com/bobsh/puppet-iptables.git iptables
 
-Also ensure you have the following in your puppet.conf on the client and master side::
+Read the instructions here for more information regarding plugins in modules::
 
-  [agent]
-  pluginsync=true
-
+  http://docs.puppetlabs.com/guides/plugins_in_modules.html
