@@ -26,86 +26,86 @@ require 'open3'
 
 class TestIPTables < Test::Unit::TestCase
 
-    # location where iptables binaries are to be found
-    @@iptables_dir = "/sbin"
+  # def setup
+  # end
 
-    # Bellow is a set of relatively rudimentary tests for iptables type.
-    # Please *NOTE* that it relies on files pre.iptables and
-    # post.iptables in /etc/puppet/iptables/ to be either empty or absent.
-    def test_iptables_set_close
-        text = 'iptables {name: proto => "tcp", state => "NEW" }'
-        stdin, stdout, stderr = Open3.popen3("puppet apply --debug --libdir=../../ --color=false")
-        stdin.puts(text)
-        stdin.close
+  # def teardown
+  # end
 
-        out = ""
-        while lnout = stdout.gets do
-          out << lnout
+  # location where iptables binaries are to be found
+  @@iptables_dir = "/sbin"
+
+  def test_iptables_state_new
+    out,err = run_dsl('iptables {name: proto => "tcp", state => "NEW" }')
+    assert_match(/iptables -t filter -A INPUT -p tcp -m tcp -m state --state NEW -m comment --comment "name" -j ACCEPT/, out)
+  end
+
+  def test_iptables_set_established
+    out,err = run_dsl('iptables {name: proto => "tcp", state => "ESTABLISHED"}')
+    assert_match(/iptables -t filter -A INPUT -p tcp -m tcp -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out)
+  end
+
+  def test_iptables_set_different_port
+    out,err = run_dsl('iptables {name: proto => "tcp", dport => "8000", state => "ESTABLISHED"}')
+    assert_match(/iptables -t filter -A INPUT -p tcp -m tcp --dport 8000 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out)
+  end
+
+  def test_iptables_udp_source_destination
+    out,err = run_dsl('iptables {name: proto => "udp", dport => "1234", source => "127.0.0.1", state => "ESTABLISHED"}')
+    assert_match(/iptables -t filter -A INPUT -s 127.0.0.1\/32 -p udp -m udp --dport 1234 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out)
+  end
+
+  def test_iptables_udp_nat_prerouting
+    out,err = run_dsl('iptables {name: proto => "tcp", dport => "1234", source => "127.0.0.1", destination => "127.0.0.1", state => "ESTABLISHED", table => "nat", chain => "PREROUTING"}')
+    assert_match(/iptables -t nat -A PREROUTING -s 127.0.0.1\/32 -d 127.0.0.1\/32 -p tcp -m tcp --dport 1234 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out)
+  end
+
+  def assert_rule_present(rule)
+    assert_rule(rule, true)
+  end
+
+  def assert_rule_not_present(rule)
+    assert_rule(rule, false)
+  end
+
+  def assert_rule(rule, negative = true)
+    present = false
+
+    assert_nothing_raised do
+      `#{@@iptables_dir}/iptables-save`.each { |l|
+        l.strip!
+        if( l == rule )
+          present = true
+          break
         end
-        puts out
+      }
 
-        err = ""
-        while lnerr = stderr.gets do
-          err << lnerr
-        end
-        puts err
+      if negative
+        raise "Rule not present" unless present
+      else
+        raise "Rule present" unless !present
+      end
     end
 
-    def test_iptables_set_open
-        rules = Puppet.type(:iptables).create :name => '80', :proto => 'tcp', :state => :open
-        assert_apply(rules)
-        assert_rule_present     "-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT"
-        assert_rule_not_present "-A INPUT -p tcp -m tcp --dport 80 -j DROP"
+  end
+
+  def run_dsl(dsl)
+    cmd = 'puppet apply --debug --libdir=../../ --color=false'
+
+    stdin, stdout, stderr = Open3.popen3(cmd)
+    stdin.puts(dsl)
+    stdin.close
+
+    out = ""
+    while ln = stdout.gets do
+      out << ln
     end
 
-    def test_iptables_set_different_port
-        rules = Puppet.type(:iptables).create :name => '8080', :proto => 'tcp', :state => :open
-        assert_apply(rules)
-        assert_rule_present     "-A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT"
-        assert_rule_not_present "-A INPUT -p tcp -m tcp --dport 80 -j ACCEPT"
-        assert_rule_not_present "-A INPUT -p tcp -m tcp --dport 80 -j DROP"
+    err = ""
+    while ln = stderr.gets do
+      err << ln
     end
 
-    def test_iptables_udp_source_destination
-        rules = Puppet.type(:iptables).create :name => '9124', :proto => 'udp', :state => :close, :source => '127.0.0.1'
-        assert_apply(rules)
-        assert_rule_present     "-A INPUT -s 127.0.0.1 -p udp -m udp --dport 9124 -j DROP"
-        assert_rule_not_present "-A INPUT -p tcp -m tcp --dport 8080 -j ACCEPT"
-    end
-
-    def test_iptables_udp_nat_prerouting
-        rules = Puppet.type(:iptables).create :name => '22', :proto => 'tcp',
-            :state => :close, :source => '18.7.22.83', :destination => '127.0.0.1',
-            :table =>  'nat', :chain => 'PREROUTING'
-        assert_apply(rules)
-        assert_rule_present     "-A PREROUTING -s 18.7.22.83 -d 127.0.0.1 -p tcp -m tcp --dport 22 -j DROP"
-        assert_rule_not_present "-A INPUT -s 127.0.0.1 -p udp -m udp --dport 9124 -j DROP"
-    end
-
-    def assert_rule_present(rule)
-        assert_rule(rule, true)
-    end
-
-    def assert_rule_not_present(rule)
-        assert_rule(rule, false)
-    end
-
-    def assert_rule(rule, negative = true)
-        present = false
-        assert_nothing_raised do
-            `#{@@iptables_dir}/iptables-save`.each { |l|
-                l.strip!
-                if( l == rule )
-                  present = true
-                  break
-                end
-            }
-
-            if negative
-                raise "Rule not present" unless present
-            else
-                raise "Rule present" unless !present
-            end
-        end
-    end
+    return out,err
+  end
 end
