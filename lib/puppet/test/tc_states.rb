@@ -20,7 +20,18 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'test/unit'
-require 'tc_basic'
-require 'tc_icmp'
-require 'tc_multi_source'
-require 'tc_states'
+require 'puppettest'
+
+class TestIPTablesStates < Test::Unit::TestCase
+  require 'puppettest'
+  include Puppettest
+
+  #########
+  # Tests #
+  #########
+  def test_states
+    out,err = run_dsl('iptables {"state types 1":	source => "0.0.0.0", state => ["NEW","RELATED"], jump => "ACCEPT"}')
+    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -p tcp -m tcp -m state --state NEW,RELATED -m comment --comment \"state types 1\" -j ACCEPT/, out)
+  end
+
+end

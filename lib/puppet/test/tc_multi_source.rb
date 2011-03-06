@@ -20,7 +20,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 require 'test/unit'
-require 'tc_basic'
-require 'tc_icmp'
-require 'tc_multi_source'
-require 'tc_states'
+require 'puppettest'
+
+class TestIPTablesMultiSource < Test::Unit::TestCase
+  require 'puppettest'
+  include Puppettest
+
+  #########
+  # Tests #
+  #########
+  def test_multi_source
+    out,err = run_dsl('iptables {"multiple sources 1": source => ["1.2.3.4/32","4.3.2.1/32"],	dport => 15, jump => "ACCEPT" }')
+    assert_match(/iptables -t filter -A INPUT -s 1.2.3.4\/32 -p tcp -m tcp --dport 15 -m comment --comment \"multiple sources 1\" -j ACCEPT/, out)
+    assert_match(/iptables -t filter -A INPUT -s 4.3.2.1\/32 -p tcp -m tcp --dport 15 -m comment --comment \"multiple sources 1\" -j ACCEPT/, out)    
+  end
+
+end

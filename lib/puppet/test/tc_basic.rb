@@ -19,21 +19,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-$:.unshift("../../lib") if __FILE__ =~ /\.rb$/
-
 require 'test/unit'
-require 'open3'
+require 'puppettest'
 
 class TestIPTables < Test::Unit::TestCase
-
-  # def setup
-  # end
-
-  # def teardown
-  # end
-
-  # location where iptables binaries are to be found
-  @@iptables_dir = "/sbin"
+  require 'puppettest'
+  include Puppettest
 
   #########
   # Tests #
@@ -63,55 +54,13 @@ class TestIPTables < Test::Unit::TestCase
     assert_match(/iptables -t nat -A PREROUTING -s 127.0.0.1\/32 -d 127.0.0.1\/32 -p tcp -m tcp --dport 1234 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out)
   end
 
-  #############################################
-  # Convenience methods and custom assertions #
-  #############################################
-  def assert_rule_present(rule)
-    assert_rule(rule, true)
-  end
+  def test_source_dest
+    out,err = run_dsl('iptables { "test rule": source => "0.0.0.0",	destination => "0.0.0.0" }')
+    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p tcp -m tcp -m comment --comment \"test rule\" -j ACCEPT/, out)
+  end  
 
-  def assert_rule_not_present(rule)
-    assert_rule(rule, false)
-  end
-
-  def assert_rule(rule, negative = true)
-    present = false
-
-    assert_nothing_raised do
-      `#{@@iptables_dir}/iptables-save`.each { |l|
-        l.strip!
-        if( l == rule )
-          present = true
-          break
-        end
-      }
-
-      if negative
-        raise "Rule not present" unless present
-      else
-        raise "Rule present" unless !present
-      end
-    end
-
-  end
-
-  def run_dsl(dsl)
-    cmd = 'puppet apply --debug --libdir=../../ --color=false'
-
-    stdin, stdout, stderr = Open3.popen3(cmd)
-    stdin.puts(dsl)
-    stdin.close
-
-    out = ""
-    while ln = stdout.gets do
-      out << ln
-    end
-
-    err = ""
-    while ln = stderr.gets do
-      err << ln
-    end
-
-    return out,err
+  def test_sport_dport
+    out,err = run_dsl('iptables { "sport and dport": source => "0.0.0.0", sport => "14", destination => "0.0.0.0", dport => "15" }')
+    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p tcp -m tcp --sport 14 --dport 15 -m comment --comment \"sport and dport\" -j ACCEPT/, out)
   end
 end
