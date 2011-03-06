@@ -70,7 +70,7 @@ module Puppet
 
       # Keep rule names simple
       validate do |value|
-        if value !~ /^[a-zA-Z0-9 \-_]+$/ do
+        if value !~ /^[a-zA-Z0-9 \-_]+$/ then
           self.fail "Not a valid rule name. Make sure it contains ASCII " \
             "alphanumeric, spaces, hyphens or underscoares." 
         end
