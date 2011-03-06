@@ -22,6 +22,7 @@
 $:.unshift("../../lib") if __FILE__ =~ /\.rb$/
 
 require 'test/unit'
+require 'open3'
 
 class TestIPTables < Test::Unit::TestCase
 
@@ -32,9 +33,13 @@ class TestIPTables < Test::Unit::TestCase
     # Please *NOTE* that it relies on files pre.iptables and
     # post.iptables in /etc/puppet/iptables/ to be either empty or absent.
     def test_iptables_set_close
-        rules = Puppet.type(:iptables).create :name => '80', :proto => 'tcp', :state => :close
-        assert_apply(rules)
-        assert_rule_present "-A INPUT -p tcp -m tcp --dport 80 -j DROP"
+        text = 'iptables {name: proto => "tcp", state => "NEW" }'
+        stdin, stdout, stderr = Open3.popen3("puppet apply --debug --libdir=../../ --color=false")
+        stdin.puts(text)
+        stdin.close
+        while out = stdout.gets do
+          puts out
+        end
     end
 
     def test_iptables_set_open
