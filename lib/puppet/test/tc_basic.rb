@@ -35,6 +35,9 @@ class TestIPTables < Test::Unit::TestCase
   # location where iptables binaries are to be found
   @@iptables_dir = "/sbin"
 
+  #########
+  # Tests #
+  #########
   def test_iptables_state_new
     out,err = run_dsl('iptables {name: proto => "tcp", state => "NEW" }')
     assert_match(/iptables -t filter -A INPUT -p tcp -m tcp -m state --state NEW -m comment --comment "name" -j ACCEPT/, out)
@@ -60,6 +63,9 @@ class TestIPTables < Test::Unit::TestCase
     assert_match(/iptables -t nat -A PREROUTING -s 127.0.0.1\/32 -d 127.0.0.1\/32 -p tcp -m tcp --dport 1234 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out)
   end
 
+  #############################################
+  # Convenience methods and custom assertions #
+  #############################################
   def assert_rule_present(rule)
     assert_rule(rule, true)
   end
