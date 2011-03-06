@@ -19,6 +19,8 @@
 
 require "ipaddr"
 require 'resolv'
+require 'puppet/util/iptables'
+require 'puppet/util/ipcidr'
 
 module Puppet
 
@@ -62,6 +64,8 @@ module Puppet
   }
 
   newtype(:iptables) do
+    include Puppet::Util::Iptables
+
     @doc = "Manipulate iptables rules"
 
     newparam(:name) do
@@ -253,7 +257,7 @@ module Puppet
 
           source = self.matched(l.scan(/-s (\S+)/))
           if source
-            ip = IpCidr.new(source)
+            ip = Puppet::Util::IpCidr.new(source)
             if @@usecidr
               source = ip.cidr
             else
@@ -264,7 +268,7 @@ module Puppet
 
           destination = self.matched(l.scan(/-d (\S+)/))
           if destination
-            ip = IpCidr.new(destination)
+            ip = Puppet::Util::IpCidr.new(destination)
             if @@usecidr
               destination = ip.cidr
             else
@@ -450,7 +454,7 @@ module Puppet
       # The way we do it is that if we find any difference with the
       # current rules, we add all new ones and remove all old ones.
       if self.rules_are_different
-        # load new new rules
+        # load new new rules and benchmark the whole lot
         benchmark(:notice, self.noop ? "rules would have changed... (noop)" : "rules have changed...") do
           # load new rules
           @@table_counters.each { |table, total_do_delete|
@@ -483,8 +487,9 @@ module Puppet
               }
             end
           }
+
           # Run iptables save to persist rules. The behaviour is to do nothing
-          # if we no nothing of the operating system.
+          # if we know nothing of the operating system.
           persist_cmd = case Facter.value(:operatingsystem).downcase
             when "fedora", "redhat", "centos"
               then "/sbin/service iptables save"
@@ -662,7 +667,7 @@ module Puppet
           if source !~ /\//
             source = Resolv.getaddress(source)
           end
-          ip = IpCidr.new(source.to_s)
+          ip = Puppet::Util::IpCidr.new(source.to_s)
           if @@usecidr
             source = ip.cidr
           else
@@ -687,7 +692,7 @@ module Puppet
         if destination !~ /\//
           destination = Resolv.getaddress(destination)
         end
-        ip = IpCidr.new(destination)
+        ip = Puppet::Util::IpCidr.new(destination)
         if @@usecidr
           destination = ip.cidr
         else
@@ -980,31 +985,4 @@ module Puppet
   end
 end
 
-# This class is a lame copy of:
-# http://article.gmane.org/gmane.comp.lang.ruby.core/10013/
 
-class IpCidr < IPAddr
-
-  def netmask
-    _to_string(@mask_addr)
-  end
-
-  def prefixlen
-    m = case @family
-    when Socket::AF_INET
-      IN4MASK
-    when Socket::AF_INET6
-      IN6MASK
-    else
-      raise "unsupported address family"
-    end
-    return $1.length if /\A(1*)(0*)\z/ =~ (@mask_addr & m).to_s(2)
-    raise "bad addr_mask format"
-  end
-
-  def cidr
-    cidr = sprintf("%s/%s", self.to_s, self.prefixlen)
-    cidr
-  end
-
-end
