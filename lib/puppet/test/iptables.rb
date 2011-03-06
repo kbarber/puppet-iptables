@@ -37,9 +37,18 @@ class TestIPTables < Test::Unit::TestCase
         stdin, stdout, stderr = Open3.popen3("puppet apply --debug --libdir=../../ --color=false")
         stdin.puts(text)
         stdin.close
-        while out = stdout.gets do
-          puts out
+
+        out = ""
+        while lnout = stdout.gets do
+          out << lnout
         end
+        puts out
+
+        err = ""
+        while lnerr = stderr.gets do
+          err << lnerr
+        end
+        puts err
     end
 
     def test_iptables_set_open
