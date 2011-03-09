@@ -1,16 +1,11 @@
-====================
-Puppet iptables type
-====================
+= Puppet iptables type
 
 This is a simple wrapper around the "iptables" command used on Linux. It is
 meant to be used to define half a dozen rules on the host running puppet. For
-more serious needs, you might want to have a look at this `shorewall module`_
-for puppet.
+more serious needs, you might want to have a look at the 
+{shorewall module}[http://github.com/camptocamp/puppet-shorewall/tree] for puppet.
 
-.. _`shorewall module`: http://github.com/camptocamp/puppet-shorewall/tree
-
-Introduction
-------------
+== Introduction
 
 The way it works differs slightly from the usual puppet resource types.
 
@@ -34,10 +29,9 @@ So the idea is to have the "iptables type":
 * purge any rule it doesn't know about
 * run the commands to insert the rules in the right order.
 
-Usage
------
+== Usage
 
-Example::
+Example:
 
   iptables { "001 allow icmp":
     proto => "icmp",
@@ -75,21 +69,20 @@ This will run the following commands, in this exact order::
   iptables -t filter -A INPUT -p tcp --dport 80 -j DROP
   iptables -t filter -A INPUT -j REJECT --reject-with icmp-port-unreachable
 
-Reference
----------
+== Reference
 
 Have a look at lib/puppet/type/iptables.rb for the complete list of
 parameters.
 
 
-Installation
-------------
+== Installation
 
 If you are using standard path locations, then just clone this git repository in your $modulepath on the puppetmaster, for example::
 
   cd /etc/puppet/modules
   git clone git://github.com/bobsh/puppet-iptables.git iptables
 
-Read the instructions here for more information regarding plugins in modules::
+Read the {official Puppetlabs instructions}[http://docs.puppetlabs.com/guides/plugins_in_modules.html]
+for more information regarding plugins in modules.
 
-  http://docs.puppetlabs.com/guides/plugins_in_modules.html
+  

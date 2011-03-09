@@ -19,13 +19,20 @@
 
 require 'rake'
 require 'rake/testtask'
+require 'rake/rdoctask'
 
 task :default => [:test]
 
 desc "Run basic tests"
-Rake::TestTask.new("test") { |t|
+Rake::TestTask.new(:test) { |t|
   t.libs << "test"
   t.pattern = 'test/tc_*.rb'
   t.verbose = true
   t.warning = true
+}
+
+Rake::RDocTask.new(:rdoc) { |rd|
+  rd.main = "README.rdoc"
+  rd.rdoc_files.include("README.rdoc", "lib/**/*.rb")
+  rd.options << "--all"
 }
