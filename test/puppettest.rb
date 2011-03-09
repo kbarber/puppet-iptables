@@ -57,7 +57,7 @@ module Puppettest
   end
 
   def run_dsl(dsl)
-    cmd = 'puppet apply --debug --libdir=../lib --color=false'
+    cmd = 'puppet apply --debug --libdir=lib --color=false'
 
     stdin, stdout, stderr = Open3.popen3(cmd)
     stdin.puts(dsl)

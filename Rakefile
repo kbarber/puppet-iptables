@@ -17,28 +17,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-require 'find'
+require 'rake'
+require 'rake/testtask'
 
-desc "Run puppet tests."
-task :test, :path do |t, args|
-  args.with_defaults(:path => ".")
+task :default => [:test]
 
-  paths = []
-
-  Find.find(args.path) do |path|
-    if path =~ /tests\/\d+.+\.pp/
-      paths << path
-    end
-  end
-
-  paths.sort.each do |path|
-    print("Processing " + path + ": ")
-    result = `puppet --noop --modulepath=. #{path} 2>&1`
-    if $?.exitstatus == 0
-      puts("\tSuccess")
-    else
-      puts("\tFailed")
-      puts(result)
-    end
-  end
-end
+desc "Run basic tests"
+Rake::TestTask.new("test") { |t|
+  t.libs << "test"
+  t.pattern = 'test/tc_*.rb'
+  t.verbose = true
+  t.warning = true
+}
