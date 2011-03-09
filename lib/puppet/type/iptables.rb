@@ -220,7 +220,8 @@ module Puppet
       table_rules   = {}
       counter       = 1
 
-      `#{@@iptables_dir}/iptables-save`.each { |l|
+      ipt_save = Facter.value(:iptables_save_cmd)
+      `#{ipt_save}`.each { |l|
         if /^\*\S+/.match(l)
           # Matched table
           table = self.matched(l.scan(/^\*(\S+)/))
@@ -465,8 +466,9 @@ module Puppet
                   debug("Would have run [create]: 'iptables -t #{table} #{rule_to_set['rule']}' (noop)")
                   next
                 else
-                  debug("Running [create]: 'iptables -t #{table} #{rule_to_set['rule']}'")
-                  `#{@@iptables_dir}/iptables -t #{table} #{rule_to_set['rule']}`
+                  ipt_cmd = Facter.value(:iptables_cmd)
+                  debug("Running [create]: '#{ipt_cmd} -t #{table} #{rule_to_set['rule']}'")
+                  `#{ipt_cmd} -t #{table} #{rule_to_set['rule']}`
                 end
               }
             end
@@ -481,8 +483,9 @@ module Puppet
                   debug("Would have run [delete]: 'iptables -t #{table} -D #{data['chain']} 1' (noop)")
                   next
                 else
-                  debug("Running [delete]: 'iptables -t #{table} -D #{data['chain']} 1'")
-                  `#{@@iptables_dir}/iptables -t #{table} -D #{data['chain']} 1`
+                  ipt_cmd = Facter.value(:iptables_cmd)
+                  debug("Running [delete]: '#{ipt_cmd} -t #{table} -D #{data['chain']} 1'")
+                  `#{ipt_cmd} -t #{table} -D #{data['chain']} 1`
                 end
               }
             end
@@ -490,15 +493,7 @@ module Puppet
 
           # Run iptables save to persist rules. The behaviour is to do nothing
           # if we know nothing of the operating system.
-          persist_cmd = case Facter.value(:operatingsystem).downcase
-            when "fedora", "redhat", "centos"
-              then "/sbin/service iptables save"
-            when "ubuntu", "debian"
-              then "/etc/init.d/iptables-persistent save"
-            when "gentoo"
-              then "/etc/init.d/iptables save"
-            else nil
-          end
+          persist_cmd = Facter.value(:iptables_persist_cmd)
 
           if persist_cmd != nil
             if Puppet[:noop]
@@ -581,8 +576,9 @@ module Puppet
                 debug("Would have run [delete]: 'iptables -t #{table} #{rule.sub('-A', '-D')}' (noop)")
                 next
               else
-                debug("Running [delete]: 'iptables -t #{table} #{rule.sub('-A', '-D')}'")
-                `#{@@iptables_dir}/iptables -t #{table} #{rule.sub("-A", "-D")}`
+                ipt_cmd = Facter.value(:iptables_cmd)
+                debug("Running [delete]: '#{ipt_cmd} -t #{table} #{rule.sub('-A', '-D')}'")
+                `#{ipt_cmd} -t #{table} #{rule.sub("-A", "-D")}`
               end
               deleted += 1
             end
@@ -630,8 +626,8 @@ module Puppet
       super(args)
 
       if @@usecidr == nil
-        iptablesversion = `#{@@iptables_dir}/iptables --version`.scan(/ v([0-9\.]+)/)
-        iptablesversion = iptablesversion[0][0].split(".")
+        iptablesversion = Facter.value(:iptables_version)
+        iptablesversion = iptablesversion.split(".")
         if iptablesversion[0].to_i < 2 and iptablesversion[1].to_i < 4
           @@usecidr = false
         else
