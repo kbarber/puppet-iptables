@@ -1,8 +1,6 @@
 # Puppet Iptables Module
 #
 # Copyright (C) 2011 Bob.sh Limited
-# Copyright (C) 2008 Camptocamp Association
-# Copyright (C) 2007 Dmitri Priimak
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
