@@ -1,2 +1,5 @@
 pkg/
 html/
+# Ignore eclipse bits
+.buildpath
+.project

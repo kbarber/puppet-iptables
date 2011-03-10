@@ -24,6 +24,24 @@ require 'puppet/util/ipcidr'
 
 module Puppet
 
+  # List of table names
+  @@table_names = ['filter','nat','mangle','raw']
+
+  # pre and post rules are loaded from files
+  # pre.iptables post.iptables in /etc/puppet/iptables
+  @@pre_file  = "/etc/puppet/iptables/pre.iptables"
+  @@post_file = "/etc/puppet/iptables/post.iptables"
+
+  # order in which the differents chains appear in iptables-save's output. Used
+  # to sort the rules the same way iptables-save does.
+  @@chain_order = {
+    'PREROUTING'  => 1,
+    'INPUT'       => 2,
+    'FORWARD'     => 3,
+    'OUTPUT'      => 4,
+    'POSTROUTING' => 5,
+  }    
+      
   @@rules = {}
 
   @@current_rules = {}
@@ -34,34 +52,9 @@ module Puppet
 
   @@instance_count = 0
 
-  @@table_counters = {
-    'filter' => 1,
-    'nat'    => 1,
-    'mangle' => 1,
-    'raw'    => 1
-  }
-
-  @@usecidr = nil
-
   @@finalized = false
 
-  # pre and post rules are loaded from files
-  # pre.iptables post.iptables in /etc/puppet/iptables
-  @@pre_file  = "/etc/puppet/iptables/pre.iptables"
-  @@post_file = "/etc/puppet/iptables/post.iptables"
 
-  # location where iptables binaries are to be found
-  @@iptables_dir = "/sbin"
-
-  # order in which the differents chains appear in iptables-save's output. Used
-  # to sort the rules the same way iptables-save does.
-  @@chain_order = {
-    'PREROUTING'  => 1,
-    'INPUT'       => 2,
-    'FORWARD'     => 3,
-    'OUTPUT'      => 4,
-    'POSTROUTING' => 5,
-  }
 
   newtype(:iptables) do
     include Puppet::Util::Iptables
@@ -205,15 +198,6 @@ module Puppet
     # Parse the output of iptables-save and return a hash with every parameter
     # of each rule
     def load_current_rules(numbered = false)
-      if( numbered )
-        # reset table counters to 0
-        @@table_counters = {
-          'filter' => 0,
-          'nat'    => 0,
-          'mangle' => 0,
-          'raw'    => 0
-        }
-      end
 
       table         = ''
       loaded_rules  = {}
@@ -259,7 +243,7 @@ module Puppet
           source = self.matched(l.scan(/-s (\S+)/))
           if source
             ip = Puppet::Util::IpCidr.new(source)
-            if @@usecidr
+            if Facter.value("iptables_ipcidr")
               source = ip.cidr
             else
               source = ip.to_s
@@ -270,7 +254,7 @@ module Puppet
           destination = self.matched(l.scan(/-d (\S+)/))
           if destination
             ip = Puppet::Util::IpCidr.new(destination)
-            if @@usecidr
+            if Facter.value("iptables_ipcidr")
               destination = ip.cidr
             else
               destination = ip.to_s
@@ -353,11 +337,6 @@ module Puppet
           if( numbered )
             debug("Adding: #{counter.to_s} #{l.strip}")
             table_rules[counter.to_s + " " +l.strip] = data
-
-            # we also set table counters to indicate amount
-            # of current rules in each table, that will be needed if
-            # we decide to refresh them
-            @@table_counters[table] += 1
           else
             debug("Adding: #{l.strip}")
             table_rules[l.strip] = data
@@ -434,7 +413,7 @@ module Puppet
       load_rules_from_file(@@rules, @@post_file, :append)
 
       # add numbered version to each rule
-      @@table_counters.each_key { |table|
+      @@table_names.each { |table|
         rules_to_set = @@rules[table]
         if rules_to_set
           counter = 1
@@ -458,7 +437,7 @@ module Puppet
         # load new new rules and benchmark the whole lot
         benchmark(:notice, self.noop ? "rules would have changed... (noop)" : "rules have changed...") do
           # load new rules
-          @@table_counters.each { |table, total_do_delete|
+          @@table_names.each { |table|
             rules_to_set = @@rules[table]
             if rules_to_set
               rules_to_set.each { |rule_to_set|
@@ -475,7 +454,7 @@ module Puppet
           }
 
           # delete old rules
-          @@table_counters.each { |table, total_do_delete|
+          @@table_names.each { |table|
             current_table_rules = @@current_rules[table]
             if current_table_rules
               current_table_rules.each { |rule, data|
@@ -527,7 +506,7 @@ module Puppet
       # load current rules
       @@current_rules = self.load_current_rules(true)
 
-      @@table_counters.each_key { |table|
+      @@table_names.each { |table|
         rules_to_set = @@rules[table]
         current_table_rules = @@current_rules[table]
         current_table_rules = {} unless current_table_rules
@@ -553,7 +532,7 @@ module Puppet
       deleted = 0;
 
       # compare current rules with requested set
-      @@table_counters.each_key { |table|
+      @@table_names.each { |table|
         rules_to_set = @@rules[table]
         current_table_rules = @@current_rules[table]
         if rules_to_set
@@ -610,12 +589,7 @@ module Puppet
 
       @@instance_count = 0
 
-      @@table_counters = {
-        'filter' => 1,
-        'nat'    => 1,
-        'mangle' => 1,
-        'raw'    => 1
-      }
+
 
       @@finalized = false
       super
@@ -624,16 +598,6 @@ module Puppet
 
     def initialize(args)
       super(args)
-
-      if @@usecidr == nil
-        iptablesversion = Facter.value(:iptables_version)
-        iptablesversion = iptablesversion.split(".")
-        if iptablesversion[0].to_i < 2 and iptablesversion[1].to_i < 4
-          @@usecidr = false
-        else
-          @@usecidr = true
-        end
-      end
 
       invalidrule = false
       @@total_rule_count += 1
@@ -664,7 +628,7 @@ module Puppet
             source = Resolv.getaddress(source)
           end
           ip = Puppet::Util::IpCidr.new(source.to_s)
-          if @@usecidr
+          if Facter.value("iptables_ipcidr")
             source = ip.cidr
           else
             source = ip.to_s
@@ -689,7 +653,7 @@ module Puppet
           destination = Resolv.getaddress(destination)
         end
         ip = Puppet::Util::IpCidr.new(destination)
-        if @@usecidr
+        if Facter.value("iptables_ipcidr")
           destination = ip.cidr
         else
           destination = ip.to_s
@@ -764,31 +728,12 @@ module Puppet
         if value(:icmp).to_s == ""
           value_icmp = "any"
         else
-          value_icmp = value(:icmp).to_s
-
           # Translate the symbolic names for icmp packet types to
           # numbers. Otherwise iptables-save saves the rules as numbers
           # and we will always fail the comparison causing re-loads.
-          unless value_icmp =~ /^\d{1,2}$/
-            value_icmp = case value_icmp
-              when "echo-reply" then "0"
-              when "destination-unreachable" then "3"
-              when "source-quence" then "4"
-              when "redirect" then "6"
-              when "echo-request" then "8"
-              when "router-advertisement" then "9"
-              when "router-solicitation" then "10"
-              when "time-exceeded" then "11"
-              when "parameter-problem" then "12"
-              when "timestamp-request" then "13"
-              when "timestamp-reply" then "14"
-              when "address-mask-request" then "17"
-              when "address-mask-reply" then "18"
-              else ""
-            end
-          end
+          value_icmp = icmp_name_to_number(value(:icmp).to_s)
 
-          if value_icmp == ""
+          if value_icmp == nil
             invalidrule = true
             err("Value for 'icmp' is invalid/unknown. Ignoring rule.")
           end
@@ -980,5 +925,3 @@ module Puppet
     end
   end
 end
-
-
