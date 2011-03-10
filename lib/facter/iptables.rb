@@ -47,3 +47,15 @@ Facter.add("iptables_persist_cmd") do
     end
   end
 end
+
+Facter.add("iptables_ipcidr") do
+  setcode do
+    iptablesversion = Facter.value(:iptables_version)
+    iptablesversion = iptablesversion.split(".")
+    if iptablesversion[0].to_i < 2 and iptablesversion[1].to_i < 4
+      false
+    else
+      true
+    end
+  end
+end
