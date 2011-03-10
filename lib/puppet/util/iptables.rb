@@ -18,5 +18,34 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 module Puppet::Util::Iptables
-
+  
+  # Translate the symbolic names for icmp packet types to
+  # numbers.
+  def icmp_name_to_number(value_icmp)
+    if value_icmp =~ /^\d{1,2}$/
+      value_icmp
+    else
+      case value_icmp
+        when "echo-reply" then "0"
+        when "destination-unreachable" then "3"
+        when "source-quence" then "4"
+        when "redirect" then "6"
+        when "echo-request" then "8"
+        when "router-advertisement" then "9"
+        when "router-solicitation" then "10"
+        when "time-exceeded" then "11"
+        when "parameter-problem" then "12"
+        when "timestamp-request" then "13"
+        when "timestamp-reply" then "14"
+        when "address-mask-request" then "17"
+        when "address-mask-reply" then "18"
+        else nil
+      end
+    end
+  end
+  
+  # Convert iptables-save ouput to a hash
+  def iptables_save_to_hash(text)
+    
+  end
 end
