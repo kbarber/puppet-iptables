@@ -120,6 +120,12 @@ module Puppet
                   If array is specified, values will be passed to multiport module.
                   Only applies to tcp/udp."
       defaultto ""
+
+      validate do |value|
+        if value.is_a?(Array) and value.length > 15
+          self.fail "multiport module only accepts <= 15 ports"
+        end
+      end            
     end
 
     newparam(:dport) do
@@ -127,6 +133,12 @@ module Puppet
                   If array is specified, values will be passed to multiport module.
                   Only applies to tcp/udp."
       defaultto ""
+      
+      validate do |value|
+        if value.is_a?(Array) and value.length > 15
+          self.fail "multiport module only accepts <= 15 ports"
+        end
+      end
     end
 
     newparam(:iniface) do
@@ -170,6 +182,20 @@ module Puppet
     newparam(:icmp) do
       desc "value for iptables '-p icmp --icmp-type' parameter"
       defaultto ""
+      
+      munge do |value|
+        num = @resource.icmp_name_to_number(value)
+        if num == nil and value != ""
+          self.fail("cannot work out icmp type")
+        end
+        num
+      end
+      
+      validate do |value|
+        if value == ""
+          self.fail("cannot work out icmp type")
+        end
+      end
     end
 
     newparam(:state) do
@@ -187,13 +213,76 @@ module Puppet
     newparam(:burst) do
       desc "value for '--limit-burst' parameter.
                   Example values are: '5', '10'."
-      defaultto ""
+      
+      validate do |value|
+        if value.to_s !~ /^[0-9]+$/
+          self.fail "burst accepts only numeric values"
+        end
+      end
     end
 
     newparam(:redirect) do
       desc "value for iptables '-j REDIRECT --to-ports' parameter."
       defaultto ""
     end
+
+    # This is where we Validate across parameters
+    validate do
+      # First we make sure the chains and tables are valid combinations
+      if self[:table].to_s == "filter" and ["PREROUTING", "POSTROUTING"].include?(self[:chain].to_s)
+        self.fail "PREROUTING and POSTROUTING cannot be used in table 'filter'"
+      elsif self[:table].to_s == "nat" and ["INPUT", "FORWARD"].include?(self[:chain].to_s)
+        self.fail "INPUT and FORWARD cannot be used in table 'nat'"
+      elsif self[:table].to_s == "raw" and ["INPUT", "FORWARD", "POSTROUTING"].include?(self[:chain].to_s)
+        self.fail "INPUT, FORWARD and POSTROUTING cannot be used in table 'raw'"
+      end
+      
+      if self[:iniface].to_s != ""
+        unless ["INPUT", "FORWARD", "PREROUTING"].include?(self[:chain].to_s)
+          self.fail "Parameter iniface only applies to chains INPUT,FORWARD,PREROUTING"
+        end
+      end
+
+      if self[:outiface].to_s != ""
+        unless ["OUTPUT", "FORWARD", "POSTROUTING"].include?(value(:chain).to_s)
+          self.fail "Parameter outiface only applies to chains OUTPUT,FORWARD,POSTROUTING"
+        end
+      end
+      
+      if self[:dport] != "" and !["tcp", "udp", "sctp"].include?(self[:proto].to_s)
+        self.fail "Parameter dport only applies to udp and tcp protocols"
+      end
+      
+      if self[:sport] != "" and !["tcp", "udp", "sctp"].include?(self[:proto].to_s)
+        self.fail "Parameter sport only applies to udp and tcp protocols"
+      end
+      
+      if self[:jump].to_s == "DNAT"
+        if self[:table].to_s != "nat"
+          self.fail "Parameter jump => DNAT only applies to table => nat"
+        elsif self[:todest].to_s == ""
+          self.fail "Parameter jump => DNAT must have todest parameter"
+        end
+      elsif self[:jump].to_s == "SNAT"
+        if self[:table].to_s != "nat"
+          self.fail "Parameter jump => SNAT only applies to table => nat"
+        elsif self[:tosource].to_s == ""
+          self.fail "Parameter jump => SNAT missing mandatory tosource parameter"
+        end
+      elsif self[:jump].to_s == "REDIRECT"
+        if self[:toports].to_s == ""
+          self.fail "Parameter jump => REDIRECT missing mandatory toports parameter"
+        end
+      elsif self[:jump].to_s == "MASQUERADE"
+        if self[:table].to_s != "nat"
+          self.fail "Parameter jump => MASQUERADE only applies to table => nat"
+        end
+      end    
+      
+      if self[:burst].to_s != "" and self[:limit].to_s == ""
+        self.fail "burst makes no sense without limit"
+      end  
+    end        
 
     # Parse the output of iptables-save and return a hash with every parameter
     # of each rule
@@ -235,7 +324,7 @@ module Puppet
         end
       end
     end
-
+    
     # finalize() gets run once every iptables resource has been declared.
     # It decides if puppet resources differ from currently active iptables
     # rules and applies the necessary changes.
@@ -444,18 +533,7 @@ module Puppet
       # Create a Hash with all available params defaulted to empty strings.
       strings = self.class.allattrs.inject({}) { |x,y| x[y] = ""; x }
 
-      if value(:table).to_s == "filter" and ["PREROUTING", "POSTROUTING"].include?(value(:chain).to_s)
-        invalidrule = true
-        err("PREROUTING and POSTROUTING cannot be used in table 'filter'. Ignoring rule.")
-      elsif  value(:table).to_s == "nat" and ["INPUT", "FORWARD"].include?(value(:chain).to_s)
-        invalidrule = true
-        err("INPUT and FORWARD cannot be used in table 'nat'. Ignoring rule.")
-      elsif  value(:table).to_s == "raw" and ["INPUT", "FORWARD", "POSTROUTING"].include?(value(:chain).to_s)
-        invalidrule = true
-        err("INPUT, FORWARD and POSTROUTING cannot be used in table 'raw'. Ignoring rule.")
-      else
-        strings[:table] = "-A " + value(:chain).to_s
-      end
+      strings[:table] = "-A " + value(:chain).to_s
 
       sources = []
       if value(:source).to_s != ""
@@ -498,22 +576,11 @@ module Puppet
         strings[:destination] = " -d " + destination
       end
 
-      if value(:iniface).to_s != ""
-        if ["INPUT", "FORWARD", "PREROUTING"].include?(value(:chain).to_s)
-          strings[:iniface] = " -i " + value(:iniface).to_s
-        else
-          invalidrule = true
-          err("--in-interface only applies to INPUT/FORWARD/PREROUTING. Ignoring rule.")
-        end
+      if value(:iniface)
+        strings[:iniface] = " -i " + value(:iniface).to_s
       end
-
-      if value(:outiface).to_s != ""
-        if ["OUTPUT", "FORWARD", "POSTROUTING"].include?(value(:chain).to_s)
-          strings[:outiface] = " -o " + value(:outiface).to_s
-        else
-          invalidrule = true
-          err("--out-interface only applies to OUTPUT/FORWARD/POSTROUTING. Ignoring rule.")
-        end
+      if value(:outiface)
+        strings[:outiface] = " -o " + value(:outiface).to_s
       end
 
       if value(:proto).to_s != "all"
@@ -524,38 +591,18 @@ module Puppet
       end
 
       if value(:dport).to_s != ""
-        if ["tcp", "udp"].include?(value(:proto).to_s)
-          if value(:dport).is_a?(Array)
-            if value(:dport).length <= 15
-              strings[:dport] = " -m multiport --dports " + value(:dport).join(",")
-            else
-              invalidrule = true
-              err("multiport module only accepts <= 15 ports. Ignoring rule.")
-            end
-          else
-            strings[:dport] = " --dport " + value(:dport).to_s
-          end
+        if value(:dport).is_a?(Array)
+          strings[:dport] = " -m multiport --dports " + value(:dport).join(",")
         else
-          invalidrule = true
-          err("--destination-port only applies to tcp/udp. Ignoring rule.")
+          strings[:dport] = " --dport " + value(:dport).to_s
         end
       end
 
       if value(:sport).to_s != ""
-        if ["tcp", "udp"].include?(value(:proto).to_s)
-          if value(:sport).is_a?(Array)
-            if value(:sport).length <= 15
-              strings[:sport] = " -m multiport --sports " + value(:sport).join(",")
-            else
-              invalidrule = true
-              err("multiport module only accepts <= 15 ports. Ignoring rule.")
-            end
-          else
-            strings[:sport] = " --sport " + value(:sport).to_s
-          end
+        if value(:sport).is_a?(Array)
+          strings[:sport] = " -m multiport --sports " + value(:sport).join(",")
         else
-          invalidrule = true
-          err("--source-port only applies to tcp/udp. Ignoring rule.")
+          strings[:sport] = " --sport " + value(:sport).to_s
         end
       end
 
@@ -564,16 +611,7 @@ module Puppet
         if value(:icmp).to_s == ""
           value_icmp = "any"
         else
-          # Translate the symbolic names for icmp packet types to
-          # numbers. Otherwise iptables-save saves the rules as numbers
-          # and we will always fail the comparison causing re-loads.
-          value_icmp = icmp_name_to_number(value(:icmp).to_s)
-
-          if value_icmp == nil
-            invalidrule = true
-            err("Value for 'icmp' is invalid/unknown. Ignoring rule.")
-          end
-
+          value_icmp = value(:icmp)
         end
 
         strings[:icmp] = " --icmp-type " + value_icmp
@@ -633,47 +671,18 @@ module Puppet
       end
 
       if value(:burst).to_s != ""
-        if value(:limit).to_s == ""
-          invalidrule = true
-          err("'burst' makes no sense without 'limit'. Ignoring rule.")
-        elsif value(:burst).to_s !~ /^[0-9]+$/
-          invalidrule = true
-          err("'burst' accepts only numeric values. Ignoring rule.")
-        else
-          strings[:burst] = " --limit-burst " + value(:burst).to_s
-        end
+        strings[:burst] = " --limit-burst " + value(:burst).to_s
       end
-
+      
       strings[:jump] = " -j " + value(:jump).to_s
 
       value_reject = ""
       if value(:jump).to_s == "DNAT"
-        if value(:table).to_s != "nat"
-          invalidrule = true
-          err("DNAT only applies to table 'nat'.")
-        elsif value(:todest).to_s == ""
-          invalidrule = true
-          err("DNAT missing mandatory 'todest' parameter.")
-        else
-          strings[:todest] = " --to-destination " + value(:todest).to_s
-        end
+        strings[:todest] = " --to-destination " + value(:todest).to_s
       elsif value(:jump).to_s == "SNAT"
-        if value(:table).to_s != "nat"
-          invalidrule = true
-          err("SNAT only applies to table 'nat'.")
-        elsif value(:tosource).to_s == ""
-          invalidrule = true
-          err("SNAT missing mandatory 'tosource' parameter.")
-        else
-          strings[:tosource] = " --to-source " + value(:tosource).to_s
-        end
+        strings[:tosource] = " --to-source " + value(:tosource).to_s
       elsif value(:jump).to_s == "REDIRECT"
-        if value(:toports).to_s == ""
-          invalidrule = true
-          err("REDIRECT missing mandatory 'toports' parameter.")
-        else
-          strings[:toports] = " --to-ports " + value(:toports).to_s
-        end
+        strings[:toports] = " --to-ports " + value(:toports).to_s
       elsif value(:jump).to_s == "REJECT"
         # Apply the default rejection type if none is specified.
         value_reject = value(:reject).to_s != "" ? value(:reject).to_s : "icmp-port-unreachable"
@@ -686,11 +695,6 @@ module Puppet
           # --log-prefix has a 29 characters limitation.
           log_prefix = "\"" + value(:log_prefix).to_s[0,27] + ": \""
           strings[:log_prefix] = " --log-prefix " + log_prefix
-        end
-      elsif value(:jump).to_s == "MASQUERADE"
-        if value(:table).to_s != "nat"
-          invalidrule = true
-          err("MASQUERADE only applies to table 'nat'.")
         end
       elsif value(:jump).to_s == "REDIRECT"
         if value(:redirect).to_s != ""

@@ -43,4 +43,34 @@ class TestIPTablesValidation < Test::Unit::TestCase
     assert_match(/Parameter table failed/, err)
   end
 
+  # Check to make sure you can't define chains that don't match the table
+  def test_mixing_wrong_chains_and_tables
+    out,err = run_dsl('iptables {name: chain => "INPUT", table => "nat" }')
+    assert_match(/INPUT and FORWARD cannot be used in table 'nat'/, err)
+  end
+
+  # Check to make sure you only use --in-interface with INPUT,FORWARD,PREROUTING
+  def test_iniface_with_wrong_chain
+    out,err = run_dsl('iptables {name: iniface => "eth0", chain => "OUTPUT" }')
+    assert_match(/Parameter iniface only applies to chains INPUT,FORWARD,PREROUTING/, err)
+  end  
+
+  # Check to make sure you only use --out-interface with OUTPUT,FORWARD,POSTROUTING
+  def test_outiface_with_wrong_chain
+    out,err = run_dsl('iptables {name: outiface => "eth0", chain => "INPUT" }')
+    assert_match(/Parameter outiface only applies to chains OUTPUT,FORWARD,POSTROUTING/, err)
+  end    
+
+  # Check to make sure you can't use more then 15 dports
+  def test_max_dports
+    out,err = run_dsl('iptables {name: chain => "INPUT", dport => ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"] }')
+    assert_match(/Parameter dport failed/, err)
+  end      
+  
+  # Check to make sure you can't use more then 15 sports
+  def test_max_sports
+    out,err = run_dsl('iptables {name: chain => "INPUT", sport => ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16"] }')
+    assert_match(/Parameter sport failed/, err)
+  end        
+        
 end
