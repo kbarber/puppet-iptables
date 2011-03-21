@@ -35,8 +35,8 @@ class TestIPTablesIcmp < Test::Unit::TestCase
   end
 
   def test_icmp_type_invalid
-    out,err = run_dsl('iptables {"icmp_type_invalid":	source => "0.0.0.0",	destination => "0.0.0.0",	proto => "icmp",	icmp => "foo" }')
-    assert_match(/Value for 'icmp' is invalid\/unknown. Ignoring rule./, out, err)
+    out,err = run_dsl('iptables {"icmp_type_invalid": source => "0.0.0.0",	destination => "0.0.0.0",	proto => "icmp",	icmp => "foo" }')
+    assert_match(/cannot work out icmp type/, out, err)
   end
 
   def test_icmp_type_any

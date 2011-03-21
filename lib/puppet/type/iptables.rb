@@ -192,9 +192,9 @@ module Puppet
       end
       
       validate do |value|
-        if value == ""
-          self.fail("cannot work out icmp type")
-        end
+#        if value == ""
+#          self.fail("cannot work out icmp type")
+#        end
       end
     end
 
