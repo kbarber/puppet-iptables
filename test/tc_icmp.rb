@@ -31,17 +31,17 @@ class TestIPTablesIcmp < Test::Unit::TestCase
   #########
   def test_icmp_type
     out,err = run_dsl('iptables {"icmp_type":	source => "0.0.0.0", destination => "0.0.0.0", proto => "icmp",	icmp => "echo-reply" }')
-    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p icmp -m icmp --icmp-type 0 -m comment --comment "icmp_type" -j ACCEPT/, out)
+    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p icmp -m icmp --icmp-type 0 -m comment --comment "icmp_type" -j ACCEPT/, out, err)
   end
 
   def test_icmp_type_invalid
     out,err = run_dsl('iptables {"icmp_type_invalid":	source => "0.0.0.0",	destination => "0.0.0.0",	proto => "icmp",	icmp => "foo" }')
-    assert_match(/Value for 'icmp' is invalid\/unknown. Ignoring rule./, out)
+    assert_match(/Value for 'icmp' is invalid\/unknown. Ignoring rule./, out, err)
   end
 
   def test_icmp_type_any
     out,err = run_dsl('iptables {"icmp_type_any": source => "0.0.0.0", destination => "0.0.0.0", proto => "icmp" }')
-    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p icmp -m icmp --icmp-type any -m comment --comment \"icmp_type_any\" -j ACCEPT/, out)
+    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p icmp -m icmp --icmp-type any -m comment --comment \"icmp_type_any\" -j ACCEPT/, out, err)
   end
 
 end

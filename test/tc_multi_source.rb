@@ -31,8 +31,8 @@ class TestIPTablesMultiSource < Test::Unit::TestCase
   #########
   def test_multi_source
     out,err = run_dsl('iptables {"multiple sources 1": source => ["1.2.3.4/32","4.3.2.1/32"],	dport => 15, jump => "ACCEPT" }')
-    assert_match(/iptables -t filter -A INPUT -s 1.2.3.4\/32 -p tcp -m tcp --dport 15 -m comment --comment \"multiple sources 1\" -j ACCEPT/, out)
-    assert_match(/iptables -t filter -A INPUT -s 4.3.2.1\/32 -p tcp -m tcp --dport 15 -m comment --comment \"multiple sources 1\" -j ACCEPT/, out)    
+    assert_match(/iptables -t filter -A INPUT -s 1.2.3.4\/32 -p tcp -m tcp --dport 15 -m comment --comment \"multiple sources 1\" -j ACCEPT/, out, err)
+    assert_match(/iptables -t filter -A INPUT -s 4.3.2.1\/32 -p tcp -m tcp --dport 15 -m comment --comment \"multiple sources 1\" -j ACCEPT/, out, err)    
   end
 
 end
