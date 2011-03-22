@@ -50,7 +50,7 @@ module Puppet
       end
       
       # Convert iptables-save ouput to a hash.
-      def iptables_save_to_hash(text, numbered=false)
+      def self.iptables_save_to_hash(text, numbered=false)
         table         = ''
         loaded_rules  = {}
         table_rules   = {}
