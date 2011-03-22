@@ -33,7 +33,7 @@ module Puppet
           case value_icmp
             when "echo-reply" then "0"
             when "destination-unreachable" then "3"
-            when "source-quence" then "4"
+            when "source-quench" then "4"
             when "redirect" then "6"
             when "echo-request" then "8"
             when "router-advertisement" then "9"
