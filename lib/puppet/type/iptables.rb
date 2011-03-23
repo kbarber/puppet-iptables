@@ -28,6 +28,9 @@ module Puppet
 
     @doc = "Manipulate iptables rules"
 
+    feature :purgeable, "The provider can purge rules",
+      :methods => [:purge]
+
     ensurable do
       desc "Create or remove this rule."
 
@@ -37,6 +40,10 @@ module Puppet
 
       newvalue(:absent) do
         provider.delete
+      end
+
+      newvalue(:purged, :required_features => :purgeable) do
+        provider.purge
       end
 
       defaultto :present

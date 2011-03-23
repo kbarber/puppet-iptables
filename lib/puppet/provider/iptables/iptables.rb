@@ -36,12 +36,15 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Return existing rules
   def self.instances
+    debug "Return existing rules"
+    # Pass in iptables save command gleaned from facter
     ipt_save = Facter.value(:iptables_save_cmd)
-    iptables_save_to_hash(`#{ipt_save}`, false)
+    Puppet::Util::Iptables.iptables_save_to_hash(`#{ipt_save}`, false)
   end
 
   # Prefetch our rule list, yo.
   def self.prefetch(rules)
+    debug "Prefetch our rule list, yo"
     instances.each do |prov|
       if rule = rules[prov.name] || rules[prov.name.downcase]
         rule.provider = prov
@@ -51,16 +54,40 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Does this resource exist
   def exists?
-    properties[:ensure] != :absent
+    debug "Check if rule name '%s' exists" % (resource[:name])
+    @property_hash[:ensure] != :absent
+    false
   end
 
   # Look up the current status.
   def properties
+    debug "properties"
     if @property_hash.empty?
       @property_hash = query || {:ensure => :absent}
       @property_hash[:ensure] = :absent if @property_hash.empty?
     end
     @property_hash.dup
+  end
+
+  def flush
+    debug "flush %s " % (self.hash)
+  end
+
+  # Ensure verbs
+
+  # Create a new rule
+  def create
+    debug "Create rule"
+  end
+
+  # Delete a rule
+  def create
+    debug "Create rule"
+  end
+
+  # Purge
+  def purge
+    debug "Purge"
   end
 
   # List of table names
@@ -97,7 +124,7 @@ Puppet::Type.type(:iptables).provide :iptables do
   # of each rule
   def load_current_rules(numbered = false)
     ipt_save = Facter.value(:iptables_save_cmd)
-    self.iptables_save_to_hash(`#{ipt_save}`, numbered)
+    iptables_save_to_hash(`#{ipt_save}`, numbered)
   end
 
   # Load a file and using the passed in rules hash load the 
