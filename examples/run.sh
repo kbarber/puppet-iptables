@@ -1,3 +1,3 @@
 #!/bin/bash
 
-puppet --libdir ../lib test.pp
+puppet --debug --libdir ../lib test.pp
