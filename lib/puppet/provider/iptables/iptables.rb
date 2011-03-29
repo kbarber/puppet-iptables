@@ -29,10 +29,12 @@ Puppet::Type.type(:iptables).provide :iptables do
   desc "Iptables provider"
 
   # Default for linux boxes in general
-  defaultfor :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, :sles, :oel, :ovm]
+  defaultfor :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
+    :sles, :oel, :ovm]
 
   # Confine to linux only
-  confine :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, :sles, :oel, :ovm]
+  confine :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
+    :sles, :oel, :ovm]
 
   # Return existing rules
   def self.instances
@@ -174,12 +176,12 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Delete a rule
   def delete
-    debug "Delete rule"
+    debug "[delete]"
   end
 
   # Purge
   def purge
-    debug "Purge"
+    debug "[purge]"
   end
 
 end
