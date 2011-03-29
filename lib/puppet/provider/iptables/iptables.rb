@@ -36,22 +36,15 @@ Puppet::Type.type(:iptables).provide :iptables do
   confine :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
     :sles, :oel, :ovm]
 
-  # Return existing rules
-  def self.instances
-    debug "Return existing rules"
-    # Pass in iptables save command gleaned from facter
-    ipt_save = Facter.value(:iptables_save_cmd)
-    Puppet::Util::Iptables.iptables_save_to_hash(`#{ipt_save}`, false)
-  end
-
   # Prefetch our rule list, yo.
-  def self.prefetch(rules)
-    debug "[prefetch] Prefetch our rule list, yo"
-    instances.each do |prov|
-      #debug("Foo: %s" % prov[1].keys.join(":"))
-      #if rule = rules[prov.name] || rules[prov.name.downcase]
-      #  rule.provider = prov
-      #end
+  def self.prefetch(resources)
+    debug "[prefetch]"
+    resources.each do |name, resource|
+      result = {}
+      result[:ensure] = :present
+      resource.provider = new(result)
+      debug "[prefetch] Name: %s" % name
+      debug "[prefetch] Resource: %s" % resource.type
     end
   end
 
@@ -78,7 +71,7 @@ Puppet::Type.type(:iptables).provide :iptables do
   end
 
   def flush
-    debug "flush %s " % (self.hash)
+    debug "[flush]"
   end
 
   # Ensure verbs
@@ -170,7 +163,7 @@ Puppet::Type.type(:iptables).provide :iptables do
     arguments << "'#{resource[:name]}'"
     
     iptables_cmd = arguments.join(" ")
-    debug "Running: iptables %s" % iptables_cmd
+    debug "[create] Running: iptables %s" % iptables_cmd
     `iptables #{iptables_cmd}`
   end
 
