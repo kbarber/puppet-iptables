@@ -64,15 +64,16 @@ module Puppet
 
     newparam(:chain) do
       desc "holds value of iptables -A parameter.
-                  Possible values are: 'INPUT', 'FORWARD', 'OUTPUT', 'PREROUTING', 'POSTROUTING'.
-                  Default value is 'INPUT'"
+        Possible values are: 'INPUT', 'FORWARD', 'OUTPUT', 'PREROUTING', 
+        'POSTROUTING'. Default value is 'INPUT'"
       newvalues(:INPUT, :FORWARD, :OUTPUT, :PREROUTING, :POSTROUTING)
       defaultto "INPUT"
     end
 
     newparam(:table) do
-      desc "one of the following tables: 'nat', 'mangle',
-                  'filter' and 'raw'. Default one is 'filter'"
+      desc "The value for the iptables -t parameter. Can be one of the 
+        following tables: 'nat', 'mangle', 'filter' and 'raw'. Default one is 
+        'filter'"
       newvalues(:nat, :mangle, :filter, :raw)
       defaultto "filter"
     end
@@ -107,7 +108,6 @@ module Puppet
       desc "holds value of iptables [..] --source-port parameter.
                   If array is specified, values will be passed to multiport module.
                   Only applies to tcp/udp."
-      defaultto ""
 
       validate do |value|
         if value.is_a?(Array) and value.length > 15
@@ -139,32 +139,26 @@ module Puppet
 
     newparam(:tosource) do
       desc "value for iptables '-j SNAT --to-source' parameter"
-      defaultto ""
     end
 
     newparam(:todest) do
       desc "value for iptables '-j DNAT --to-destination' parameter"
-      defaultto ""
     end
 
     newparam(:toports) do
       desc "value for iptables '-j REDIRECT --to-ports' parameter"
-      defaultto ""
     end
 
     newparam(:reject) do
       desc "value for iptables '-j REJECT --reject-with' parameter"
-      defaultto ""
     end
 
     newparam(:log_level) do
       desc "value for iptables '-j LOG --log-level' parameter"
-      defaultto ""
     end
 
     newparam(:log_prefix) do
       desc "value for iptables '-j LOG --log-prefix' parameter"
-      defaultto ""
     end
 
     newparam(:icmp) do
@@ -195,7 +189,6 @@ module Puppet
     newparam(:limit) do
       desc "value for iptables '-m limit --limit' parameter.
                   Example values are: '50/sec', '40/min', '30/hour', '10/day'."
-      defaultto ""
     end
 
     newparam(:burst) do
@@ -211,7 +204,6 @@ module Puppet
 
     newparam(:redirect) do
       desc "value for iptables '-j REDIRECT --to-ports' parameter."
-      defaultto ""
     end
 
     # This is where we Validate across parameters
