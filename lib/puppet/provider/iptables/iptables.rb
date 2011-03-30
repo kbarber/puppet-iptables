@@ -28,6 +28,8 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   desc "Iptables provider"
 
+  commands :iptables_cmd => Facter.value(:iptables_cmd)
+  
   # Default for linux boxes in general
   defaultfor :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
     :sles, :oel, :ovm]
@@ -36,6 +38,12 @@ Puppet::Type.type(:iptables).provide :iptables do
   confine :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
     :sles, :oel, :ovm]
 
+  # Initialization phase
+  def initialize(resource = nil)
+    super(resource)
+    debug "[initialize]"
+  end
+  
   # Prefetch our rule list, yo.
   def self.prefetch(resources)
     debug "[prefetch]"
@@ -70,6 +78,7 @@ Puppet::Type.type(:iptables).provide :iptables do
     @property_hash.dup
   end
 
+  
   def flush
     debug "[flush]"
   end
@@ -83,13 +92,12 @@ Puppet::Type.type(:iptables).provide :iptables do
     # A hash mapping our API's parameters to real iptables command arguments
     resource_map = {
       "burst" => "--limit-burst",
-      "chain" => "-A",
       "destination" => "-d",
       "dport" => "--dport",
       "icmp" => "--icmp-type",
       "iniface" => "-i",
       "jump" => "--jump",
-      "limit" => "-m limit --limit",
+      "limit" => ["-m", "limit", "--limit"],
       "log_level" => "--log-level",
       "log_prefix" => "--log-prefix",
       "outiface" => "-o",
@@ -97,7 +105,7 @@ Puppet::Type.type(:iptables).provide :iptables do
       "redirect" => "--to-ports",
       "reject" => "--reject-with",
       "source" => "-s",
-      "state" => "-m state --state",
+      "state" => ["-m", "state", "--state"],
       "sport" => "--sport",
       "table" => "-t",
       "todest" => "--to-destination",
@@ -109,7 +117,6 @@ Puppet::Type.type(:iptables).provide :iptables do
     # order for iptables.
     resource_list = [
       "table", 
-      "chain", 
       "proto", 
       "icmp",
       "source", 
@@ -147,24 +154,40 @@ Puppet::Type.type(:iptables).provide :iptables do
       fail("Code error: There is a mismatch between resource_map and 
         resource_list.")
     end
-              
+
+    # The arguments hash is used to build our list of arguments to be passed
+    # to the local iptables command.
     arguments = []
+
+    # The insert argument (-I) comes first. Here we pass a rulenum to ensure
+    # the rule is inserted in the correct order.
+    arguments << "-I"
+    arguments << resource[:chain]
+    # TODO: we need to insert at a particular point in the set of rules.
+    # we should do this by:
+    # - grab the list of rules at prefetch
+    # - sort them out into the correct tables and chains
+    # - lexically order them inside each table and chain
+    # - ?
+    rulenum = 1
+    arguments << rulenum
+
+    # Traverse the resource list and place the switch and corresponding value
+    # into our arguments hash.              
     resource_list.each do |res|
-      
-      # Stuff the arguments into a hash
       if(resource.value(res)) then
         arguments << resource_map[res]
         arguments << resource[res]
       end
     end
     
-    # Add commment
-    arguments << "-m comment --comment"
+    # Add commment - this is special cased because it needs quote
+    # TODO: work out some nicer way of doing this?
+    arguments << ["-m", "comment", "--comment"]
     arguments << "'#{resource[:name]}'"
-    
-    iptables_cmd = arguments.join(" ")
-    debug "[create] Running: iptables %s" % iptables_cmd
-    `iptables #{iptables_cmd}`
+
+    # Combine the rules and run the desired command
+    iptables_cmd arguments
   end
 
   # Delete a rule
