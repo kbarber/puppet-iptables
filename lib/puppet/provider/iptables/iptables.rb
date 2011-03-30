@@ -28,7 +28,10 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   desc "Iptables provider"
 
+  # Rack up the commands here. We are gleaning these from the facts we provide
+  # as part of puppet-iptables.
   commands :iptables_cmd => Facter.value(:iptables_cmd)
+  commands :iptables_save_cmd => Facter.value(:iptables_save_cmd)
   
   # Default for linux boxes in general
   defaultfor :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
@@ -38,15 +41,20 @@ Puppet::Type.type(:iptables).provide :iptables do
   confine :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
     :sles, :oel, :ovm]
 
-  # Initialization phase
-  def initialize(resource = nil)
-    super(resource)
-    debug "[initialize]"
+  # Class Methods
+      
+  # This is called very early in a purge situation to get a list of existing
+  # instances.
+  def self.instances
+    debug "[instances]"
+    # TODO: return an array of resources
+    nil
   end
   
   # Prefetch our rule list, yo.
   def self.prefetch(resources)
     debug "[prefetch]"
+    # TODO: do something that caches stuff here
     resources.each do |name, resource|
       result = {}
       result[:ensure] = :present
@@ -56,11 +64,18 @@ Puppet::Type.type(:iptables).provide :iptables do
     end
   end
 
+  # Object Methods
+  
+  # Initialization phase
+  def initialize(resource = nil)
+    super(resource)
+    debug "[initialize]"
+  end
+    
   # Does this resource exist
   def exists?
     debug "[exists?] Check if rule name '%s' exists" % (resource[:name])
-    save = Facter.value('iptables_save_cmd')
-    `#{save}`.each do |line|
+    iptables_save_cmd.each do |line|
       if line =~ /--comment "#{resource[:name]}"/ then
         return true
       end
@@ -68,17 +83,7 @@ Puppet::Type.type(:iptables).provide :iptables do
     return false
   end
 
-  # Look up the current status.
-  def properties
-    debug "[properties]"
-    if @property_hash.empty?
-      @property_hash = query || {:ensure => :absent}
-      @property_hash[:ensure] = :absent if @property_hash.empty?
-    end
-    @property_hash.dup
-  end
-
-  
+  # Flush the resource object - this complements the prefetch.
   def flush
     debug "[flush]"
   end
@@ -100,6 +105,7 @@ Puppet::Type.type(:iptables).provide :iptables do
       "limit" => ["-m", "limit", "--limit"],
       "log_level" => "--log-level",
       "log_prefix" => "--log-prefix",
+      "name" => ["-m", "comment", "--comment"],
       "outiface" => "-o",
       "proto" => "-p",
       "redirect" => "--to-ports",
@@ -146,6 +152,9 @@ Puppet::Type.type(:iptables).provide :iptables do
       "todest",  
       "toports",    
       "tosource",
+      
+      # Comment is the namevar
+      "name",
     ]
     
     # Compare resource_list with resource_map keys to make sure we
@@ -161,11 +170,10 @@ Puppet::Type.type(:iptables).provide :iptables do
 
     # The insert argument (-I) comes first. Here we pass a rulenum to ensure
     # the rule is inserted in the correct order.
-    arguments << "-I"
-    arguments << resource[:chain]
+    arguments << ["-I", resource[:chain]]
     # TODO: we need to insert at a particular point in the set of rules.
     # we should do this by:
-    # - grab the list of rules at prefetch
+    # - grab the list of rules
     # - sort them out into the correct tables and chains
     # - lexically order them inside each table and chain
     # - ?
@@ -180,13 +188,8 @@ Puppet::Type.type(:iptables).provide :iptables do
         arguments << resource[res]
       end
     end
-    
-    # Add commment - this is special cased because it needs quote
-    # TODO: work out some nicer way of doing this?
-    arguments << ["-m", "comment", "--comment"]
-    arguments << "'#{resource[:name]}'"
 
-    # Combine the rules and run the desired command
+    # Run the desired command with the arguments we have gathered.
     iptables_cmd arguments
   end
 
