@@ -149,6 +149,7 @@ Puppet::Type.type(:iptables).provide :iptables do
   #
   def self.prefetch(resources)
     debug "[prefetch]"
+    
     # TODO: do something that caches stuff here
     resources.each do |name, resource|
       #result = {}
@@ -186,8 +187,8 @@ Puppet::Type.type(:iptables).provide :iptables do
   # Ensure verbs
 
   # Create a new rule
-  def create
-    debug "[create]"
+  def insert
+    debug "[insert]"
     
     # A hash mapping our API's parameters to real iptables command arguments
     resource_map = {
@@ -290,12 +291,10 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Delete a rule
   def delete
-    debug "[delete]"
-  end
-
-  # Purge
-  def purge
-    debug "[purge]"
+    debug "[delete] Chain: %s Rulenum: %s" % [resource[:chain], 
+      resource[:rulenum]]
+    
+    #iptables_cmd "-D", resource[:chain], resource[:rulenum]
   end
 
 end

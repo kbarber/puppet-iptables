@@ -32,7 +32,7 @@ module Puppet
       desc "Create or remove this rule."
 
       newvalue(:present) do
-        provider.create
+        provider.insert
       end
 
       newvalue(:absent) do
@@ -52,6 +52,15 @@ module Puppet
           self.fail "Not a valid rule name. Make sure it contains ASCII " \
             "alphanumeric, spaces, hyphens or underscoares." 
         end
+      end
+    end
+    
+    newparam(:rulenum) do
+      desc "A read only parameter which indicates the row number for this 
+        rule."
+      
+      validate do
+        fail "ctime is read-only"
       end
     end
 
@@ -113,7 +122,6 @@ module Puppet
       desc "holds value of iptables [..] --destination-port parameter.
                   If array is specified, values will be passed to multiport module.
                   Only applies to tcp/udp."
-      defaultto ""
       
       validate do |value|
         if value.is_a?(Array) and value.length > 15
@@ -156,7 +164,6 @@ module Puppet
 
     newparam(:icmp) do
       desc "value for iptables '-p icmp --icmp-type' parameter"
-      defaultto ""
       
       munge do |value|
         num = @resource.icmp_name_to_number(value)
