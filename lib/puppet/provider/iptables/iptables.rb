@@ -43,30 +43,125 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Class Methods
       
-  # This is called very early in a purge situation to get a list of existing
-  # instances.
+  # self.instances is called very early in a purge situation to get a list of 
+  # existing instances so we can target particular instances to purge.
+  #
+  # For iptables, we wish to return a full list of existing rules formatted
+  # as a list of hashes.
   def self.instances
     debug "[instances]"
-    # TODO: return an array of resources
-    nil
+
+    table         = ''
+    loaded_rules  = {}
+    table_rules   = {}
+    counter       = 1
+
+    iptables_save_cmd.each { |l|
+      if /^\*\S+/.match(l)
+        # Matched table
+        table = l.slice(/^\*(\S+)/, 1)
+
+        # init loaded_rules hash
+        loaded_rules[table] = {} unless loaded_rules[table]
+        table_rules = loaded_rules[table]
+
+        # New table - we should reset counter
+        counter = 1
+
+      elsif /^-A/.match(l)
+        # Parse the iptables rule looking for each component
+        table = l.slice(/-t (\S+)/, 1) unless table
+        table = "filter" unless table
+
+        # Some distros return "carp" for `getprotobynumber(112)`.
+        # Rewrite this to be synonymous of "vrrp".
+        l.sub!(/(-p )carp/, '\1vrrp')
+
+        source = l.slice(/-s (\S+)/, 1)
+        if source
+          ip = Puppet::Util::IpCidr.new(source)
+          if Facter.value("iptables_ipcidr")
+            source = ip.cidr
+          else
+            source = ip.to_s
+            source += sprintf("/%s", ip.netmask) unless ip.prefixlen == 32
+          end
+        end
+
+        destination = l.slice(/-d (\S+)/, 1)
+        if destination
+          ip = Puppet::Util::IpCidr.new(destination)
+          if Facter.value("iptables_ipcidr")
+            destination = ip.cidr
+          else
+            destination = ip.to_s
+            destination += sprintf("/%s", ip.netmask) unless ip.prefixlen == 32
+          end
+        end
+
+        data = {
+          :chain      => l.slice(/^-A (\S+)/, 1),
+          :table      => table,
+          :proto      => l =~ /-p (\S+)/ ? $1 : "all",
+          :jump       => l =~ /-j (\S+)/ ? $1 : "",
+          :source     => source,
+          :destination => destination,
+          :sport      => l =~ /--sport[s]? (\S+)/ ? $1 : "",
+          :dport      => l =~ /--dport[s]? (\S+)/ ? $1 : "",
+          :iniface    => l =~ /-i (\S+)/ ? $1 : "",
+          :outiface   => l =~ /-o (\S+)/ ? $1 : "",
+          :todest     => l =~ /--to-destination (\S+)/ ? $1 : "",
+          :tosource   => l =~ /--to-source (\S+)/ ? $1 : "",
+          :toports    => l =~ /--to-ports (\S+)/ ? $1 : "",
+          :reject     => l =~ /--reject-with (\S+)/ ? $1 : "",
+          :log_level  => l =~ /--log-level (\S+)/ ? $1 : "",
+          :log_prefix => l =~ /--log-prefix (\S+)/ ? $1 : "",
+          :icmp       => l =~ /--icmp-type (\S+)/ ? $1 : "",
+          :state      => l =~ /--state (\S+)/ ? $1 : "",
+          :limit      => l =~ /--limit (\S+)/ ? $1 : "",
+          :burst      => l =~ /--limit-burst (\S+)/ ? $1 : "",
+          :redirect   => l =~ /--to-ports (\S+)/ ? $1 : "",
+          :name       => l.slice(/--comment \"(.+)\"/, 1),
+          :provider   => self.name,
+          :ensure     => :present,
+          :rulenum    => counter,
+        }
+
+        table_rules[l.strip] = data
+
+        counter += 1
+      end
+    }
+    
+    # Build up rules
+    rules = [] 
+    loaded_rules.each do |table,ruleset|
+      ruleset.each do |name, rule|
+        rules << new(rule)
+      end
+    end
+      
+    rules
   end
   
-  # Prefetch our rule list, yo.
+  # Prefetch our rule list. This is ran once every time before any other 
+  # action (besides initialization of each object).
+  #
   def self.prefetch(resources)
     debug "[prefetch]"
     # TODO: do something that caches stuff here
     resources.each do |name, resource|
-      result = {}
-      result[:ensure] = :present
-      resource.provider = new(result)
-      debug "[prefetch] Name: %s" % name
-      debug "[prefetch] Resource: %s" % resource.type
+      #result = {}
+      #result[:ensure] = :present
+      #resource.provider = new(result)
+      #debug "[prefetch] Name: %s" % name
+      #debug "[prefetch] Resource: %s" % resource.type
     end
   end
 
   # Object Methods
   
-  # Initialization phase
+  # Initialization phase - execution is very early
   def initialize(resource = nil)
     super(resource)
     debug "[initialize]"
