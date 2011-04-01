@@ -99,6 +99,7 @@ Puppet::Type.type(:iptables).provide :iptables do
           end
         end
 
+        # TODO: combine the rule reading information with the resource_* stuff
         data = {
           :chain      => l.slice(/^-A (\S+)/, 1),
           :table      => table,
@@ -148,16 +149,11 @@ Puppet::Type.type(:iptables).provide :iptables do
   # action (besides initialization of each object).
   #
   def self.prefetch(resources)
-    debug "[prefetch]"
-    
-    # TODO: do something that caches stuff here
-    resources.each do |name, resource|
-      #result = {}
-      #result[:ensure] = :present
-      #resource.provider = new(result)
-      #debug "[prefetch] Name: %s" % name
-      #debug "[prefetch] Resource: %s" % resource.type
-    end
+    instances.each do |prov|
+      if resource = resources[prov.name] || resources[prov.name.downcase]
+        resource.provider = prov
+      end
+    end    
   end
 
   # Object Methods
@@ -179,16 +175,41 @@ Puppet::Type.type(:iptables).provide :iptables do
     return false
   end
 
-  # Flush the resource object - this complements the prefetch.
-  def flush
-    debug "[flush]"
+  # Create getters and setters for every available property for the resource
+  mk_resource_methods
+    
+  # Look up the current status. This allows us to conventiently look up
+  # existing status with properties[:foo].
+  def properties
+    if @property_hash.empty?
+      @property_hash = query || {:ensure => :absent}
+      @property_hash[:ensure] = :absent if @property_hash.empty?
+    end
+    @property_hash.dup
   end
-
+  # Pull the current state of the list from the full list.  We're
+  # getting some double entendre here....
+  def query
+    self.class.instances.each do |instance|
+      if instance.name == self.name or instance.name.downcase == self.name
+        return instance.properties
+      end
+    end
+    nil
+  end  
+  # Flush the property hash once done.
+  def flush
+    @property_hash.clear
+  end
+    
+  
   # Ensure verbs
 
   # Create a new rule
   def insert
     debug "[insert]"
+    
+    # TODO: turn this resource_* stuff into 1 large array with hashes
     
     # A hash mapping our API's parameters to real iptables command arguments
     resource_map = {
@@ -291,10 +312,10 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Delete a rule
   def delete
-    debug "[delete] Chain: %s Rulenum: %s" % [resource[:chain], 
-      resource[:rulenum]]
+    debug "[delete] Chain: %s Rulenum: %s" % [properties[:chain], 
+      properties[:rulenum]]
     
-    #iptables_cmd "-D", resource[:chain], resource[:rulenum]
+    iptables_cmd "-D", properties[:chain], properties[:rulenum]
   end
 
 end
