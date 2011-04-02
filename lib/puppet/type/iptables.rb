@@ -210,6 +210,8 @@ module Puppet
     validate do
       debug("[validate]")
       
+      debug("%s" % @parameters[:proto].value)
+      
       # First we make sure the chains and tables are valid combinations
       if value(:table).to_s == "filter" and ["PREROUTING", "POSTROUTING"].include?(value(:chain).to_s)
         self.fail "PREROUTING and POSTROUTING cannot be used in table 'filter'"

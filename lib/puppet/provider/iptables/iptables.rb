@@ -191,6 +191,11 @@ Puppet::Type.type(:iptables).provide :iptables do
   end  
   # Flush the property hash once done.
   def flush
+    debug("[flush]")
+    needs_change = @property_hash.delete(:needs_change)
+    if needs_change
+      notice("Change here")
+    end
     @property_hash.clear
   end
     
@@ -304,4 +309,11 @@ Puppet::Type.type(:iptables).provide :iptables do
     iptables_cmd "-D", properties[:chain], properties[:rulenum]
   end
 
+  # Property methods
+  
+  # TODO: awfully cumbersome way of doing this ...
+  def dport
+    @property_hash[:needs_change] = true
+  end
+  
 end
