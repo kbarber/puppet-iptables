@@ -141,7 +141,10 @@ Puppet::Type.type(:iptables).provide :iptables do
         rules << new(rule)
       end
     end
-      
+    
+    #require 'pp'  
+    #pp rules
+    
     rules
   end
   
@@ -149,6 +152,7 @@ Puppet::Type.type(:iptables).provide :iptables do
   # action (besides initialization of each object).
   #
   def self.prefetch(resources)
+    debug("[prefetch(resources)]")
     instances.each do |prov|
       if resource = resources[prov.name] || resources[prov.name.downcase]
         resource.provider = prov
@@ -157,22 +161,10 @@ Puppet::Type.type(:iptables).provide :iptables do
   end
 
   # Object Methods
-  
-  # Initialization phase - execution is very early
-  def initialize(resource = nil)
-    super(resource)
-    debug "[initialize]"
-  end
-    
+      
   # Does this resource exist
   def exists?
-    debug "[exists?] Check if rule name '%s' exists" % (resource[:name])
-    iptables_save_cmd.each do |line|
-      if line =~ /--comment "#{resource[:name]}"/ then
-        return true
-      end
-    end
-    return false
+    properties[:ensure] != :absent
   end
 
   # Create getters and setters for every available property for the resource
@@ -202,13 +194,10 @@ Puppet::Type.type(:iptables).provide :iptables do
     @property_hash.clear
   end
     
-  
   # Ensure verbs
 
   # Create a new rule
   def insert
-    debug "[insert]"
-    
     # TODO: turn this resource_* stuff into 1 large array with hashes
     
     # A hash mapping our API's parameters to real iptables command arguments
@@ -312,9 +301,6 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Delete a rule
   def delete
-    debug "[delete] Chain: %s Rulenum: %s" % [properties[:chain], 
-      properties[:rulenum]]
-    
     iptables_cmd "-D", properties[:chain], properties[:rulenum]
   end
 

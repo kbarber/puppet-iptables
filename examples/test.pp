@@ -1,6 +1,7 @@
 iptables { '000 allow foo':
-  dport => "7070",
+  dport => "7060",
   jump => "ACCEPT",
+  proto => "tcp",
 }
 iptables { '001 allow boo':
   jump => "ACCEPT",
@@ -10,10 +11,10 @@ iptables { '001 allow boo':
   proto => "tcp",
   destination => "1.1.1.1/24",
   source => "2.2.2.2/24",
-  ensure => absent,
 }
 iptables { '002 foo':
   dport => "1233",
+  proto => "tcp",
   jump => "DROP",
 }
 
