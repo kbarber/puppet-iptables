@@ -17,6 +17,11 @@ iptables { '002 foo':
   proto => "tcp",
   jump => "DROP",
 }
+iptables { '999 bar':
+  dport => "1233",
+  proto => "tcp",
+  jump => "DROP",
+}
 
 resources { 'iptables':
   purge => true

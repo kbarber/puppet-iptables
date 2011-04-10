@@ -51,8 +51,20 @@ Puppet::Type.type(:iptables).provide :iptables do
   def self.instances
     debug "[instances]"
 
+    # Build up rules
+    rules = [] 
+    loaded_rules.each do |table,ruleset|
+      ruleset.each do |name, rule|
+        rules << new(rule)
+      end
+    end
+        
+    rules
+  end
+
+  def self.loaded_rules
     table         = ''
-    loaded_rules  = {}
+    rules  = {}
     table_rules   = {}
     counter       = 1
 
@@ -62,8 +74,8 @@ Puppet::Type.type(:iptables).provide :iptables do
         table = l.slice(/^\*(\S+)/, 1)
 
         # init loaded_rules hash
-        loaded_rules[table] = {} unless loaded_rules[table]
-        table_rules = loaded_rules[table]
+        rules[table] = {} unless rules[table]
+        table_rules = rules[table]
 
         # New table - we should reset counter
         counter = 1
@@ -133,21 +145,9 @@ Puppet::Type.type(:iptables).provide :iptables do
         counter += 1
       end
     }
-    
-    # Build up rules
-    rules = [] 
-    loaded_rules.each do |table,ruleset|
-      ruleset.each do |name, rule|
-        rules << new(rule)
-      end
-    end
-    
-    #require 'pp'  
-    #pp rules
-    
-    rules
+    return rules
   end
-  
+    
   # Prefetch our rule list. This is ran once every time before any other 
   # action (besides initialization of each object).
   #
@@ -288,7 +288,7 @@ Puppet::Type.type(:iptables).provide :iptables do
     # - sort them out into the correct tables and chains
     # - lexically order them inside each table and chain
     # - ?
-    rulenum = 1
+    rulenum = insert_order
     arguments << rulenum
 
     # Traverse the resource list and place the switch and corresponding value
@@ -309,11 +309,42 @@ Puppet::Type.type(:iptables).provide :iptables do
     iptables_cmd "-D", properties[:chain], properties[:rulenum]
   end
 
+  # Figure out the insertion order
+  def insert_order
+    debug("[insert_order]")
+    
+    rules = self.class.loaded_rules
+    
+    current_rules = []
+    rules[resource[:table].to_s].each do |name, ruleset|
+      next unless ruleset[:chain].to_s == resource[:chain].to_s
+      current_rules << ruleset[:name]
+    end
+      
+    my_rule = resource[:name].to_s
+    current_rules << my_rule  
+    
+    current_rules.sort.index(my_rule) + 1
+  end
+  
   # Property methods
   
-  # TODO: awfully cumbersome way of doing this ...
+  # TODO: awfully cumbersome way of doing this ... need a way to set this
+  # without having to define a method for every property.
   def dport
     @property_hash[:needs_change] = true
   end
   
+  def respond_to?(name)
+    #puts name
+    if name.to_s == "destination" then
+      return true
+    else
+      super
+    end
+  end
+  def method_missing(meth, *args, &block)
+    debug("Method missing: %s" % meth)
+    super
+  end
 end
