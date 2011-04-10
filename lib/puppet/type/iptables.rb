@@ -73,27 +73,30 @@ module Puppet
     end
 
     newproperty(:table) do
-      desc "The value for the iptables -t parameter. Can be one of the 
-        following tables: 'nat', 'mangle', 'filter' and 'raw'. Default one is 
-        'filter'"
+      desc "The value for the iptables -t parameter. Can be one of the " \
+        "following tables: 'nat', 'mangle', 'filter' and 'raw'. Default one " \
+        "is 'filter'"
       newvalues(:nat, :mangle, :filter, :raw)
       defaultto "filter"
     end
 
     newproperty(:proto) do
-      desc "holds value of iptables --protocol parameter.
-                  Possible values are: 'tcp', 'udp', 'icmp', 'esp', 'ah', 'vrrp', 'igmp', 'all'.
-                  Default value is 'tcp'"
+      desc "holds value of iptables --protocol parameter. " \
+        "Possible values are: 'tcp', 'udp', 'icmp', 'esp', 'ah', 'vrrp', " \
+        "'igmp', 'all'. Default value is 'tcp'"
       newvalues(:tcp, :udp, :icmp, :esp, :ah, :vrrp, :igmp, :all)
       defaultto "tcp"
     end
 
     newproperty(:jump) do
-      desc "holds value of iptables --jump target
-                  Possible values are: 'ACCEPT', 'DROP', 'REJECT', 'DNAT', 'SNAT', 'LOG', 'MASQUERADE', 'REDIRECT'.
-                  Default value is 'ACCEPT'. While this is not the accepted norm, this is the more commonly used jump target.
-                  Users should ensure they do an explicit DROP for all packets after all the ACCEPT rules are specified."
-      newvalues(:ACCEPT, :DROP, :REJECT, :DNAT, :SNAT, :LOG, :MASQUERADE, :REDIRECT)
+      desc "holds value of iptables --jump target. " \
+        "Possible values are: 'ACCEPT', 'DROP', 'REJECT', 'DNAT', 'SNAT', " \
+        "'LOG', 'MASQUERADE', 'REDIRECT'. Default value is 'ACCEPT'. While " \
+        "this is not the accepted norm, this is the more commonly used jump " \
+        "target. Users should ensure they do an explicit DROP for all " \
+        "packets after all the ACCEPT rules are specified."
+      newvalues(:ACCEPT, :DROP, :REJECT, :DNAT, :SNAT, :LOG, :MASQUERADE, 
+        :REDIRECT)
       defaultto "ACCEPT"
     end
 
@@ -107,9 +110,9 @@ module Puppet
     end
 
     newproperty(:sport) do
-      desc "holds value of iptables [..] --source-port parameter.
-                  If array is specified, values will be passed to multiport module.
-                  Only applies to tcp/udp."
+      desc "holds value of iptables [..] --source-port parameter. If array " \
+        "is specified, values will be passed to multiport module. Only " \
+        "applies to tcp/udp."
 
       validate do |value|
         if value.is_a?(Array) and value.length > 15
@@ -119,9 +122,9 @@ module Puppet
     end
 
     newproperty(:dport) do
-      desc "holds value of iptables [..] --destination-port parameter.
-                  If array is specified, values will be passed to multiport module.
-                  Only applies to tcp/udp."
+      desc "holds value of iptables [..] --destination-port parameter. If " \
+        "array is specified, values will be passed to multiport module. " \
+        "applies to tcp/udp."
       
       validate do |value|
         if value.is_a?(Array) and value.length > 15
@@ -181,14 +184,14 @@ module Puppet
     end
 
     newproperty(:state) do
-      desc "value for iptables '-m state --state' parameter.
-                  Possible values are: 'INVALID', 'ESTABLISHED', 'NEW', 'RELATED'.
-                  Also accepts an array of multiple values."
+      desc "value for iptables '-m state --state' parameter. Possible " \
+        "values are: 'INVALID', 'ESTABLISHED', 'NEW', 'RELATED'. Also " \
+        "accepts an array of multiple values."
     end
 
     newproperty(:limit) do
-      desc "value for iptables '-m limit --limit' parameter.
-                  Example values are: '50/sec', '40/min', '30/hour', '10/day'."
+      desc "value for iptables '-m limit --limit' parameter. Example " \
+        "values are: '50/sec', '40/min', '30/hour', '10/day'."
     end
 
     newproperty(:burst) do
