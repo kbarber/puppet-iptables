@@ -41,6 +41,72 @@ Puppet::Type.type(:iptables).provide :iptables do
   confine :operatingsystem => [:redhat, :debian, :fedora, :suse, :centos, 
     :sles, :oel, :ovm]
 
+  # Data structures for defining iptables arguments
+  # TODO: turn this resource_* stuff into 1 large array with hashes
+  
+  # A hash mapping our API's parameters to real iptables command arguments
+  @@resource_map = {
+    "burst" => "--limit-burst",
+    "destination" => "-d",
+    "dport" => "--dport",
+    "icmp" => "--icmp-type",
+    "iniface" => "-i",
+    "jump" => "--jump",
+    "limit" => ["-m", "limit", "--limit"],
+    "log_level" => "--log-level",
+    "log_prefix" => "--log-prefix",
+    "name" => ["-m", "comment", "--comment"],
+    "outiface" => "-o",
+    "proto" => "-p",
+    "redirect" => "--to-ports",
+    "reject" => "--reject-with",
+    "source" => "-s",
+    "state" => ["-m", "state", "--state"],
+    "sport" => "--sport",
+    "table" => "-t",
+    "todest" => "--to-destination",
+    "toports" => "--to-ports",
+    "tosource" => "--to-source",
+  }
+  
+  # An ordered list of our parameters so we get the arguments in the correct
+  # order for iptables.
+  @@resource_list = [
+    "table", 
+    "proto", 
+    "icmp",
+    "source", 
+    "sport", 
+    "destination",
+    "dport", 
+    "iniface",
+    "outiface",
+    
+    # -m state --state x
+    "state",
+    
+    # -m limit --limit x --limit-burst x
+    "limit", "burst",
+      
+    # -j X
+    "jump",
+      
+    # -j LOG --log-level x --log-prefix x
+    "log_level",  "log_prefix",
+    
+    # -j REDIRECT --to-ports x
+    "redirect",
+         
+    # -j REJECT --reject-with 
+    "reject",
+    "todest",  
+    "toports",    
+    "tosource",
+    
+    # Comment is the namevar
+    "name",
+  ]  
+    
   # Class Methods
       
   # self.instances is called very early in a purge situation to get a list of 
@@ -167,9 +233,6 @@ Puppet::Type.type(:iptables).provide :iptables do
     properties[:ensure] != :absent
   end
 
-  # Create getters and setters for every available property for the resource
-  #mk_resource_methods
-    
   # Look up the current status. This allows us to conventiently look up
   # existing status with properties[:foo].
   def properties
@@ -194,7 +257,8 @@ Puppet::Type.type(:iptables).provide :iptables do
     debug("[flush]")
     needs_change = @property_hash.delete(:needs_change)
     if needs_change
-      notice("TODO: do change here")
+      notice("Properties changed - updating rule")
+      update
     end
     @property_hash.clear
   end
@@ -203,74 +267,9 @@ Puppet::Type.type(:iptables).provide :iptables do
 
   # Create a new rule
   def insert
-    # TODO: turn this resource_* stuff into 1 large array with hashes
-    
-    # A hash mapping our API's parameters to real iptables command arguments
-    resource_map = {
-      "burst" => "--limit-burst",
-      "destination" => "-d",
-      "dport" => "--dport",
-      "icmp" => "--icmp-type",
-      "iniface" => "-i",
-      "jump" => "--jump",
-      "limit" => ["-m", "limit", "--limit"],
-      "log_level" => "--log-level",
-      "log_prefix" => "--log-prefix",
-      "name" => ["-m", "comment", "--comment"],
-      "outiface" => "-o",
-      "proto" => "-p",
-      "redirect" => "--to-ports",
-      "reject" => "--reject-with",
-      "source" => "-s",
-      "state" => ["-m", "state", "--state"],
-      "sport" => "--sport",
-      "table" => "-t",
-      "todest" => "--to-destination",
-      "toports" => "--to-ports",
-      "tosource" => "--to-source",
-    }
-    
-    # An ordered list of our parameters so we get the arguments in the correct
-    # order for iptables.
-    resource_list = [
-      "table", 
-      "proto", 
-      "icmp",
-      "source", 
-      "sport", 
-      "destination",
-      "dport", 
-      "iniface",
-      "outiface",
-      
-      # -m state --state x
-      "state",
-      
-      # -m limit --limit x --limit-burst x
-      "limit", "burst",
-        
-      # -j X
-      "jump",
-        
-      # -j LOG --log-level x --log-prefix x
-      "log_level",  "log_prefix",
-      
-      # -j REDIRECT --to-ports x
-      "redirect",
-           
-      # -j REJECT --reject-with 
-      "reject",
-      "todest",  
-      "toports",    
-      "tosource",
-      
-      # Comment is the namevar
-      "name",
-    ]
-    
     # Compare resource_list with resource_map keys to make sure we
     # haven't missed anything.  
-    unless resource_map.keys.sort == resource_list.sort then
+    unless @@resource_map.keys.sort == @@resource_list.sort then
       fail("Code error: There is a mismatch between resource_map and 
         resource_list.")
     end
@@ -281,21 +280,13 @@ Puppet::Type.type(:iptables).provide :iptables do
 
     # The insert argument (-I) comes first. Here we pass a rulenum to ensure
     # the rule is inserted in the correct order.
-    arguments << ["-I", resource[:chain]]
-    # TODO: we need to insert at a particular point in the set of rules.
-    # we should do this by:
-    # - grab the list of rules
-    # - sort them out into the correct tables and chains
-    # - lexically order them inside each table and chain
-    # - ?
-    rulenum = insert_order
-    arguments << rulenum
+    arguments << ["-I", resource[:chain], insert_order]
 
     # Traverse the resource list and place the switch and corresponding value
     # into our arguments hash.              
-    resource_list.each do |res|
+    @@resource_list.each do |res|
       if(resource.value(res)) then
-        arguments << resource_map[res]
+        arguments << @@resource_map[res]
         arguments << resource[res]
       end
     end
@@ -304,6 +295,37 @@ Puppet::Type.type(:iptables).provide :iptables do
     iptables_cmd arguments
   end
 
+  # Update a rule
+  def update
+    # Compare resource_list with resource_map keys to make sure we
+    # haven't missed anything.  
+    unless @@resource_map.keys.sort == @@resource_list.sort then
+      fail("Code error: There is a mismatch between resource_map and 
+        resource_list.")
+    end
+  
+    # The arguments hash is used to build our list of arguments to be passed
+    # to the local iptables command.
+    arguments = []
+  
+    # The insert argument (-I) comes first. Here we pass a rulenum to ensure
+    # the rule is inserted in the correct order.
+    debug("Current resource: %s" % resource.type)
+    arguments << ["-R", resource[:chain], properties[:rulenum]]
+  
+    # Traverse the resource list and place the switch and corresponding value
+    # into our arguments hash.              
+    @@resource_list.each do |res|
+      if(resource.value(res)) then
+        arguments << @@resource_map[res]
+        arguments << resource[res]
+      end
+    end
+  
+    # Run the desired command with the arguments we have gathered.
+    iptables_cmd arguments
+  end  
+  
   # Delete a rule
   def delete
     iptables_cmd "-D", properties[:chain], properties[:rulenum]
