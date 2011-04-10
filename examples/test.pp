@@ -1,5 +1,5 @@
 iptables { '000 allow foo':
-  dport => "7060",
+  dport => "7061",
   jump => "ACCEPT",
   proto => "tcp",
 }

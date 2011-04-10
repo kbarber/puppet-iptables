@@ -168,7 +168,7 @@ Puppet::Type.type(:iptables).provide :iptables do
   end
 
   # Create getters and setters for every available property for the resource
-  mk_resource_methods
+  #mk_resource_methods
     
   # Look up the current status. This allows us to conventiently look up
   # existing status with properties[:foo].
@@ -194,7 +194,7 @@ Puppet::Type.type(:iptables).provide :iptables do
     debug("[flush]")
     needs_change = @property_hash.delete(:needs_change)
     if needs_change
-      notice("Change here")
+      notice("TODO: do change here")
     end
     @property_hash.clear
   end
@@ -329,22 +329,32 @@ Puppet::Type.type(:iptables).provide :iptables do
   
   # Property methods
   
-  # TODO: awfully cumbersome way of doing this ... need a way to set this
-  # without having to define a method for every property.
-  def dport
-    @property_hash[:needs_change] = true
+  # TODO: make it possible to change chain and table in a meaningful way
+  def chain
+    @property_hash[:chain]
+  end
+  def chain=(value)
+    return true
   end
   
-  def respond_to?(name)
-    #puts name
-    if name.to_s == "destination" then
-      return true
-    else
-      super
-    end
+  def table
+    @property_hash[:table]
   end
+  def table=(value)
+    return true
+  end
+  
+  # Executed if method is missing. In this case we are going to catch 
+  # unqualified property methods for dynamic property setting and getting.
   def method_missing(meth, *args, &block)
-    debug("Method missing: %s" % meth)
+    if @property_hash.keys.include?(meth) then
+      return @property_hash[meth.to_sym]
+    elsif @property_hash.keys.include?(meth.to_s.chomp("=").to_sym) then
+      @property_hash[:needs_change] = true
+      return true
+    end
+    
     super
   end
+  
 end
