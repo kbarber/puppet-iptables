@@ -213,7 +213,15 @@ module Puppet
     validate do
       debug("[validate]")
       
-      debug("%s" % @parameters[:proto].value)
+      debug("%s" % @parameters[:name].value)
+        
+      # TODO: this is put here to skip validation if ensure is not set. This
+      # is because there is a revalidation stage called later where the values
+      # are not set correctly. I tried tracing it - but have put in this
+      # workaround instead to skip. Must get to the bottom of this.
+      if value(:ensure) == nil then
+        return
+      end
       
       # First we make sure the chains and tables are valid combinations
       if value(:table).to_s == "filter" and ["PREROUTING", "POSTROUTING"].include?(value(:chain).to_s)
