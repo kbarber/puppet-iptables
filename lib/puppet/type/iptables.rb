@@ -224,33 +224,45 @@ module Puppet
       end
       
       # First we make sure the chains and tables are valid combinations
-      if value(:table).to_s == "filter" and ["PREROUTING", "POSTROUTING"].include?(value(:chain).to_s)
+      if value(:table).to_s == "filter" and 
+        ["PREROUTING", "POSTROUTING"].include?(value(:chain).to_s)
         self.fail "PREROUTING and POSTROUTING cannot be used in table 'filter'"
-      elsif value(:table).to_s == "nat" and ["INPUT", "FORWARD"].include?(value(:chain).to_s)
+      elsif value(:table).to_s == "nat" and 
+        ["INPUT", "FORWARD"].include?(value(:chain).to_s)
         self.fail "INPUT and FORWARD cannot be used in table 'nat'"
-      elsif value(:table).to_s == "raw" and ["INPUT", "FORWARD", "POSTROUTING"].include?(value(:chain).to_s)
-        self.fail "INPUT, FORWARD and POSTROUTING cannot be used in table 'raw'"
+      elsif value(:table).to_s == "raw" and 
+        ["INPUT", "FORWARD", "POSTROUTING"].include?(value(:chain).to_s)
+        self.fail "INPUT, FORWARD and POSTROUTING cannot be used in table raw"
       end
       
+      # Now we analyse the individual properties to make sure they apply to
+      # the correct combinations.
       if value(:iniface).to_s != ""
-        unless ["INPUT", "FORWARD", "PREROUTING"].include?(value(:chain).to_s)
-          self.fail "Parameter iniface only applies to chains INPUT,FORWARD,PREROUTING"
+        unless ["INPUT","FORWARD","PREROUTING"].include?(value(:chain).to_s)
+          self.fail "Parameter iniface only applies to chains " \
+            "INPUT,FORWARD,PREROUTING"
         end
       end
 
       if value(:outiface).to_s != ""
-        unless ["OUTPUT", "FORWARD", "POSTROUTING"].include?(value(:chain).to_s)
-          self.fail "Parameter outiface only applies to chains OUTPUT,FORWARD,POSTROUTING"
+        unless ["OUTPUT","FORWARD","POSTROUTING"].include?(value(:chain).to_s)
+          self.fail "Parameter outiface only applies to chains " \
+            "OUTPUT,FORWARD,POSTROUTING"
         end
       end
       
-      if value(:dport) != "" and !["tcp", "udp", "sctp"].include?(value(:proto).to_s)
+      if value(:dport) != nil and 
+        !["tcp", "udp", "sctp"].include?(value(:proto).to_s)
         self.fail("[%s] Parameter dport only applies to sctp, tcp and udp " \
-          "protocols. Current protocol is [%s]" % [value(:name), should(:proto)])
+          "protocols. Current protocol is [%s] and dport is [%s]" % 
+          [value(:name), should(:proto), should(:dport)])
       end
       
-      if value(:sport) != "" and !["tcp", "udp", "sctp"].include?(value(:proto).to_s)
-        self.fail "Parameter sport only applies to udp and tcp protocols"
+      if value(:sport) != nil and 
+        !["tcp", "udp", "sctp"].include?(value(:proto).to_s)
+        self.fail "[%s] Parameter sport only applies to sctp, tcp and udp " \
+          "protocols. Current protocol is [%s] and dport is [%s]" %
+          [value(:name), should(:proto), should(:sport)]
       end
       
       if value(:jump).to_s == "DNAT"
@@ -263,11 +275,13 @@ module Puppet
         if value(:table).to_s != "nat"
           self.fail "Parameter jump => SNAT only applies to table => nat"
         elsif value(:tosource).to_s == ""
-          self.fail "Parameter jump => SNAT missing mandatory tosource parameter"
+          self.fail "Parameter jump => SNAT missing mandatory tosource " \
+            "parameter"
         end
       elsif value(:jump).to_s == "REDIRECT"
         if value(:toports).to_s == ""
-          self.fail "Parameter jump => REDIRECT missing mandatory toports parameter"
+          self.fail "Parameter jump => REDIRECT missing mandatory toports " \
+            "parameter"
         end
       elsif value(:jump).to_s == "MASQUERADE"
         if value(:table).to_s != "nat"
