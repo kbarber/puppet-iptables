@@ -9,19 +9,25 @@ iptables { '001 allow boo':
   sport => "123",
   dport => "123",
   proto => "tcp",
-  destination => "1.1.1.1/24",
-  source => "2.2.2.2/24",
-}
-iptables { '002 foo':
-  dport => "1233",
-  proto => "tcp",
-  jump => "DROP",
+  destination => "1.1.1.0/24",
+  source => "2.2.2.0/24",
 }
 iptables { '999 bar':
   dport => "1233",
   proto => "tcp",
   jump => "DROP",
 }
+iptables { '002 foo':
+  dport => "1233",
+  proto => "tcp",
+  jump => "DROP",
+}
+iptables { "010 icmp":
+  proto => "icmp",
+#  icmp => "any",
+  jump => "ACCEPT",
+}
+
 
 resources { 'iptables':
   purge => true
