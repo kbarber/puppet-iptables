@@ -213,7 +213,7 @@ module Puppet
     validate do
       debug("[validate]")
       
-      debug("%s" % @parameters[:name].value)
+      #debug("%s" % @parameters[:name].value)
         
       # TODO: this is put here to skip validation if ensure is not set. This
       # is because there is a revalidation stage called later where the values
