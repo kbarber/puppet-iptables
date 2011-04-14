@@ -90,19 +90,20 @@ module Puppet
 
     newproperty(:jump) do
       desc "holds value of iptables --jump target. " \
-        "Possible values are: 'ACCEPT', 'DROP', 'REJECT', 'DNAT', 'SNAT', " \
+        "Possible values are: 'ACCEPT', 'DROP', 'QUEUE', 'RETURN', " \
+        "'REJECT', 'DNAT', 'SNAT', " \
         "'LOG', 'MASQUERADE', 'REDIRECT'. Default value is 'ACCEPT'. While " \
         "this is not the accepted norm, this is the more commonly used jump " \
         "target. Users should ensure they do an explicit DROP for all " \
         "packets after all the ACCEPT rules are specified."
-      newvalues(:ACCEPT, :DROP, :REJECT, :DNAT, :SNAT, :LOG, :MASQUERADE, 
-        :REDIRECT)
+      newvalues(:ACCEPT, :DROP, :QUEUE, :RETURN, :REJECT, :DNAT, :SNAT, :LOG, 
+        :MASQUERADE, :REDIRECT)
       defaultto "ACCEPT"
     end
 
     newproperty(:source) do
-      desc "value for iptables --source parameter.
-                  Accepts a single string or array."
+      desc "value for iptables --source parameter. Accepts a single string " \
+        "or array."
     end
 
     newproperty(:destination) do
@@ -195,8 +196,8 @@ module Puppet
     end
 
     newproperty(:burst) do
-      desc "value for '--limit-burst' parameter.
-                  Example values are: '5', '10'."
+      desc "value for '--limit-burst' parameter. Example values are: " \
+        "'5', '10'."
       
       validate do |value|
         if value.to_s !~ /^[0-9]+$/
