@@ -35,7 +35,6 @@ Example:
 
   iptables { "001 allow icmp":
     proto => "icmp",
-    icmp  => "any",
     jump  => "ACCEPT",
   }
   iptables { "002 another iptables rule":
