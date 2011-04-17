@@ -27,6 +27,9 @@ iptables { "010 icmp":
 #  icmp => "any",
   jump => "ACCEPT",
 }
+#iptables { "050 horrowshow":
+#  
+#}
 
 
 resources { 'iptables':

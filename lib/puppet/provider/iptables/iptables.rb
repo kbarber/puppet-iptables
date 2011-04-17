@@ -1,8 +1,6 @@
 # Puppet Iptables Module
 #
 # Copyright (C) 2011 Bob.sh Limited
-# Copyright (C) 2008 Camptocamp Association
-# Copyright (C) 2007 Dmitri Priimak
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,6 +42,284 @@ Puppet::Type.type(:iptables).provide :iptables do
   # Data structures for defining iptables arguments
   # TODO: turn this resource_* stuff into 1 large array with hashes
   
+  @@iptables_modules = [
+    "addrtypes" => {
+      :option => [
+        "src-type",
+        "dst-type",
+        "limit-iface-in",
+        "limit-iface-out",
+      ]
+    },
+    "ah" => {
+      :option => [
+        "ahspi",
+      ]
+    },
+    "cluster" => {
+      :option => [
+        "cluster-total-nodes",
+        "cluster-local-node",
+        "cluster-local-nodemask",
+        "cluster-hash-seed",
+      ]
+    },
+    "connbytes" => {
+      :option => [
+        "connbytes",
+        "connbytes-dir",
+        "connbytes-mode",
+        
+      ]
+    },
+    "connlimit" => {
+      :option => [
+        "connlimit-above",
+        "connlimit-mask",
+      ]
+    },
+    "connmark" => {
+      :option => [
+        "mark",
+      ]
+    },
+    "conntrack" => {
+      :option => [
+        "ctstate",
+        "ctproto",
+        "ctorigsrc",
+        "ctorigdst",
+        "ctreplsrc",
+        "ctrepldst",
+        "ctorigsrcport",
+        "ctorigdstport",
+        "ctreplsrcport",
+        "ctrepldstport",
+        "ctstatus",
+        "ctexpire",
+        "ctdir",
+      ]
+    },
+    "cpu" => {
+      :option => [
+        "cpu",
+      ] 
+    },
+    "dccp" => {
+      :option => [
+        #"dccp-sport",
+        #"dccp-dport",
+        "dccp-type",
+        "dccp-option",
+      ]
+    },
+    "dscp" => {
+      :option => [
+        "dscp",
+        "dscp-class",
+      ]
+    },
+    "ecn" => {
+      :option => [
+        "ecn-tcp-cwr",
+        "ecn-tcp-ece",
+        "ecn-ip-ect",
+      ]
+    },
+    "esp" => {
+      :option => [
+        "espspi",
+      ]
+    },
+    "hashlimit" => {
+      :option => [
+        "hashlimit-upto",
+        "hashlimit-above",
+        "hashlimit-burst",
+        "hashlimit-mode",
+        "hashlimit-srcmask",
+        "hashlimit-dshmask",
+        "hashlimit-name",
+        "hashlimit-htable-size",
+        "hashlimit-htable-max",
+        "hashlimit-htable-expire",
+        "hashlimit-htable-gcinterval",
+      ]
+    },
+    "helper" => {
+      :option => [
+        "helper"
+      ]
+    },
+    # Not a module but a protocol
+    #"icmp" => {
+    #  :option => [
+    #    "icmp-type",
+    #  ]
+    #},
+    "iprange" => {
+      :option => [
+        "src-range",
+        "dst-range",
+      ]
+    },
+    "ipvs" => {
+      :option => [
+        "vproto",
+        "vaddr",
+        "vport",
+        "vdir",
+        "vmethod",
+        "vportctl",
+      ]
+    },
+    "length" => {
+      :option => [
+        "length",
+      ]
+    },
+    "limit" => {
+      :option => [
+        "limit",
+        "limit-burst",
+      ]
+    },
+    "mac" => {
+      :option => [
+        "mac-source",
+      ]
+    },
+    "mark" => {
+      :option => [
+        "mark",
+      ],
+    },
+    #"multiport" => {
+    #  :option => [
+    #    
+    #  ]
+    #},
+    "osf" => {
+      :option => [
+        "genre",
+        "ttl",
+        "log",
+      ]
+    },
+    "owner" => {
+      :option => [
+        "uid-owner",
+        "gid-onwer",
+        "socket-exists",
+      ]
+    },
+    "physdev" => {
+      :option => [
+        "physdev-in",
+        "physdev-out",
+        "physdev-is-in",
+        "physdev-is-out",
+        "physdev-is-bridged",
+      ]
+    },
+    "pkttype" => {
+      :option => [
+        "pkt-type",
+      ]
+    },
+    "policy" => {
+      :option => [
+        "dir",
+        "pol",
+        "strict",
+        "reqid",
+        "spi",
+        "proto",
+        "mode",
+        "tunnel-src",
+        "tunnel-dst",
+        "next",
+      ]
+    },
+    "quota" => {
+      :option => [
+        "quota",
+      ]
+    },
+    "rateest" => {
+      :option => [
+        "rateest1",
+        "rateest2",
+        "rateest-delta",
+        "rateest-bps1",
+        "rateest-bps2",
+        "rateest-pps1",
+        "rateest-pps2",
+        "rateest-lt",
+        "rateest-gt",
+        "rateest-eq",
+      ]
+    },
+    "realm" => {
+      :option => [
+        "realm",
+      ]
+    },
+    "recent" => {
+      :option => [
+        "name",
+        "set",
+        "rsource",
+        "rdest",
+        "rcheck",
+        "update",
+        "remove",
+        "seconds",
+        "hitcount",
+        "rttl",
+      ]
+    },
+    #"sctp", # Not a module but a proto. But has chunk-types as an extra param.
+    "set" => {
+      :option => [
+        "match_set"
+      ]
+    },
+    "socket" => {
+      :option => [
+        "socket",
+      ]
+    },
+    "state" => {
+      :option => [
+        "state",
+      ]
+    },
+    "statistic" => {
+      :option => [
+        "mode",
+        "probability",
+        "every",
+        "packet",
+      ]
+    },
+    "string" => {
+      :option => [
+        "algo",
+        "from",
+        "to",
+        "string",
+        "hexstring",
+      ]
+    },
+    "tcpmss" => {},
+    "time" => {},
+    "tos" => {},
+    "ttl" => {},
+    "u32" => {},
+    "unclean" => {},
+  ]   
+    
   # A hash mapping our API's parameters to real iptables command arguments
   @@resource_map = {
     "burst" => "--limit-burst",
@@ -337,8 +613,12 @@ Puppet::Type.type(:iptables).provide :iptables do
     
     rules = self.class.loaded_rules
     
-    current_rules = []
-    rules[resource[:table].to_s].each do |name, ruleset|
+    # Find list of current rules based on chain and table
+    table_rules = rules[resource[:table].to_s]
+    # No rules at all? Just bail now.
+    return 1 if table_rules == nil
+    current_rules = []  
+    table_rules.each do |name, ruleset|
       next unless ruleset[:chain].to_s == resource[:chain].to_s
       current_rules << ruleset[:name]
     end
