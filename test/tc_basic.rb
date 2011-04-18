@@ -24,41 +24,56 @@ class TestIPTables < Test::Unit::TestCase
   require 'puppettest'
   include Puppettest
 
+  def flush_rules
+    `iptables -F -t filter`
+    `iptables -F -t nat`
+    `iptables -F -t mangle`
+    `iptables -F -t raw`
+  end
+
+  def setup
+    flush_rules
+  end
+
+  def teardown
+    flush_rules
+  end
+
   #########
   # Tests #
   #########
   def test_iptables_state_new
     out,err = run_dsl('iptables {name: proto => "tcp", state => "NEW" }')
-    assert_match(/iptables -t filter -A INPUT -p tcp -m tcp -m state --state NEW -m comment --comment "name" -j ACCEPT/, out, err)
+    assert_match(/iptables -I INPUT 1 -t filter -p tcp -m state --state NEW --jump ACCEPT -m comment --comment name/, out, err)
   end
 
   def test_iptables_set_established
     out,err = run_dsl('iptables {name: proto => "tcp", state => "ESTABLISHED"}')
-    assert_match(/iptables -t filter -A INPUT -p tcp -m tcp -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out, err)
+    assert_match(/iptables -I INPUT 1 -t filter -p tcp -m state --state ESTABLISHED --jump ACCEPT -m comment --comment name/, out, err)
   end
 
   def test_iptables_set_different_port
     out,err = run_dsl('iptables {name: proto => "tcp", dport => "8000", state => "ESTABLISHED"}')
-    assert_match(/iptables -t filter -A INPUT -p tcp -m tcp --dport 8000 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out, err)
+    assert_match(/-I INPUT 1 -t filter -p tcp --dport 8000 -m state --state ESTABLISHED --jump ACCEPT -m comment --comment name/, out, err)
   end
 
   def test_iptables_udp_source_destination
     out,err = run_dsl('iptables {name: proto => "udp", dport => "1234", source => "127.0.0.1", state => "ESTABLISHED"}')
-    assert_match(/iptables -t filter -A INPUT -s 127.0.0.1\/32 -p udp -m udp --dport 1234 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out, err)
+    assert_match(/iptables -I INPUT 1 -t filter -p udp -s 127.0.0.1 --dport 1234 -m state --state ESTABLISHED --jump ACCEPT -m comment --comment name/, out, err)
   end
 
   def test_iptables_udp_nat_prerouting
     out,err = run_dsl('iptables {name: proto => "tcp", dport => "1234", source => "127.0.0.1", destination => "127.0.0.1", state => "ESTABLISHED", table => "nat", chain => "PREROUTING"}')
-    assert_match(/iptables -t nat -A PREROUTING -s 127.0.0.1\/32 -d 127.0.0.1\/32 -p tcp -m tcp --dport 1234 -m state --state ESTABLISHED -m comment --comment "name" -j ACCEPT/, out, err)
+    assert_match(/iptables -I PREROUTING 1 -t nat -p tcp -s 127.0.0.1 -d 127.0.0.1 --dport 1234 -m state --state ESTABLISHED --jump ACCEPT -m comment --comment name/, out, err)
   end
 
   def test_source_dest
     out,err = run_dsl('iptables { "test rule": source => "0.0.0.0",	destination => "0.0.0.0" }')
-    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p tcp -m tcp -m comment --comment \"test rule\" -j ACCEPT/, out, err)
+    assert_match(/iptables -I INPUT 1 -t filter -p tcp -s 0.0.0.0 -d 0.0.0.0 --jump ACCEPT -m comment --comment test rule/, out, err)
   end  
 
   def test_sport_dport
     out,err = run_dsl('iptables { "sport and dport": source => "0.0.0.0", sport => "14", destination => "0.0.0.0", dport => "15" }')
-    assert_match(/iptables -t filter -A INPUT -s 0.0.0.0\/32 -d 0.0.0.0\/32 -p tcp -m tcp --sport 14 --dport 15 -m comment --comment \"sport and dport\" -j ACCEPT/, out, err)
+    assert_match(/iptables -I INPUT 1 -t filter -p tcp -s 0.0.0.0 --sport 14 -d 0.0.0.0 --dport 15 --jump ACCEPT -m comment --comment sport and dport/, out, err)
   end
 end

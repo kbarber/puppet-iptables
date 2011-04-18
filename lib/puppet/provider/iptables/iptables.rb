@@ -42,6 +42,7 @@ Puppet::Type.type(:iptables).provide :iptables do
   # Data structures for defining iptables arguments
   # TODO: turn this resource_* stuff into 1 large array with hashes
   
+  # TODO: utilise this hash to work out arguments  
   @@iptables_modules = [
     "addrtypes" => {
       :option => [
