@@ -2,13 +2,20 @@
 #
 # usage:
 # node {'node.domain':
-#    include puppet-firewall::hostfw
-#    include puppet-firewall::ssh
-#    include puppet-firewall::http
-#    include puppet-firewall::https
+#    include puppet-iptables::hostfw
+#    include puppet-iptables::ssh
+#    include puppet-iptables::http
+#    include puppet-iptables::https
 # }
 
-class puppet-firewall::hostfw {
+# Basic host firewall, also handles rule persistence on debian/ubuntu. 
+# Default FORWARD to DROP
+# Default OUTPUT to ACCEPT
+# Default INPUT to DROP
+# Allows all incoming ICMP
+# Allows all incoming ESTABLISHED,RELATED
+# Allows localhost traffic
+class puppet-iptables::hostfw {
 
 	file {'/etc/puppet/iptables': ensure => directory, mode => '700' }
 
@@ -90,7 +97,8 @@ esac
 	}
 }
 
-class puppet-firewall::ssh {
+# Allows new connections to incoming 22/tcp 
+class puppet-iptables::ssh {
 	$prio = '100'
 
         iptables {"$prio $name":
@@ -102,7 +110,8 @@ class puppet-firewall::ssh {
         }
 }
 
-class firewall::puppetmaster {
+# Allows new connections to incoming 8140/tcp 
+class puppet-iptables::puppetmaster {
 	$prio = '100'
 
         iptables {"$prio $name":
@@ -114,7 +123,8 @@ class firewall::puppetmaster {
         }
 }
 
-class firewall::snmp {
+# Allows new connections to incoming 161/udp
+class puppet-iptables::snmp {
 	$prio = '100'
 
         iptables {"$prio $name":
@@ -126,7 +136,8 @@ class firewall::snmp {
         }
 }
 
-class firewall::http {
+# Allows new connections to incoming 80/tcp
+class puppet-iptables::http {
 	$prio = '100'
 
         iptables {"$prio $name":
@@ -135,7 +146,8 @@ class firewall::http {
         }
 }
 
-class firewall::https {
+# Allows new connections to incoming 443/tcp
+class puppet-iptables::https {
 	$prio = '100'
 
         iptables {"$prio $name":
@@ -144,13 +156,13 @@ class firewall::https {
         }
 }
 
-
-class firewall::samba {
+# Allows new connections to incoming: 137,138/udp + 139,445/tcp
+class puppet-iptables::samba {
 	$prio = '100'
 
         iptables {"$prio $name 01":
                 chain => 'INPUT', state => 'NEW', jump => 'ACCEPT',
-                proto => 'udp', dport => '137:138',
+                proto => 'udp', dport => ['137','138'],
         }
         iptables {"$prio $name 02":
                 chain => 'INPUT', state => 'NEW', jump => 'ACCEPT',
