@@ -133,6 +133,11 @@ module Puppet
       defaultto ""
     end
 
+    newparam(:uid_owner) do
+      desc "value for iptables '-m owner --uid-owner' parameter"
+      defaultto ""
+    end
+
     newparam(:log_level) do
       desc "value for iptables '-j LOG --log-level' parameter"
       defaultto ""
@@ -273,6 +278,9 @@ module Puppet
           log_level = self.matched(l.scan(/--log-level (\S+)/))
           log_level = "" unless log_level
 
+          uid_owner = self.matched(l.scan(/--uid-owner (\S+)/))
+          uid_owner = "" unless uid_owner
+
           log_prefix = self.matched(l.scan(/--log-prefix (\S+)/))
           log_prefix = "" unless log_prefix
 
@@ -309,6 +317,7 @@ module Puppet
             'toports'    => toports,
             'reject'     => reject,
             'log_level'  => log_level,
+            'uid_owner'  => uid_owner,
             'log_prefix' => log_prefix,
             'icmp'       => icmp,
             'state'      => state,
@@ -804,6 +813,10 @@ module Puppet
         strings[:comment] = " -m comment --comment \"" + value(:name).to_s + "\""
       end
 
+      if value(:uid_owner).to_s != ""
+        strings[:uid_owner] = " -m owner --uid-owner " + value(:uid_owner).to_s 
+      end
+
       if value(:limit).to_s != ""
         limit_value = value(:limit).to_s
         if not limit_value.include? "/"
@@ -915,6 +928,7 @@ module Puppet
           strings[:toports],
           strings[:reject],
           strings[:log_level],
+          strings[:uid_owner],
           strings[:log_prefix],
           strings[:redirect]
         ]
@@ -939,6 +953,7 @@ module Puppet
             'reject'        => value_reject,
             'redirect'      => value(:redirect).to_s,
             'log_level'     => value(:log_level).to_s,
+            'uid_owner'     => value(:uid_owner).to_s,
             'log_prefix'    => value(:log_prefix).to_s,
             'icmp'          => value_icmp,
             'state'         => value(:state).to_s,
