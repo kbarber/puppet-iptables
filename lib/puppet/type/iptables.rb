@@ -240,15 +240,22 @@ module Puppet
             end
           end
 
-          destination = self.matched(l.scan(/-d (\S+)/))
+          destination = self.matched(l.scan(/-d ((! )?(\S+))/))
           if destination
-            ip = IpCidr.new(destination)
+
+            negator = $2
+            dest_ip = $3
+
+            ip = IpCidr.new(dest_ip)
             if @@usecidr
               destination = ip.cidr
             else
               destination = ip.to_s
               destination += sprintf("/%s", ip.netmask) unless ip.prefixlen == 32
             end
+
+            destination = "#{negator}#{destination}"
+
           end
 
           sport = self.matched(l.scan(/--sport[s]? (\S+)/))
