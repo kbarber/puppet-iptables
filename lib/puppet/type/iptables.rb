@@ -75,10 +75,10 @@ module Puppet
 
     newparam(:jump) do
       desc "holds value of iptables --jump target
-                  Possible values are: 'ACCEPT', 'DROP', 'REJECT', 'DNAT', 'SNAT', 'LOG', 'MASQUERADE', 'REDIRECT'.
+                  Possible values are: 'ACCEPT', 'DROP', 'REJECT', 'DNAT', 'SNAT', 'LOG', 'MASQUERADE', 'REDIRECT', 'NOTRACK'.
                   Default value is 'ACCEPT'. While this is not the accepted norm, this is the more commonly used jump target.
                   Users should ensure they do an explicit DROP for all packets after all the ACCEPT rules are specified."
-      newvalues(:ACCEPT, :DROP, :REJECT, :DNAT, :SNAT, :LOG, :MASQUERADE, :REDIRECT)
+      newvalues(:ACCEPT, :DROP, :REJECT, :DNAT, :SNAT, :LOG, :MASQUERADE, :REDIRECT, :NOTRACK)
       defaultto "ACCEPT"
     end
 
@@ -362,7 +362,7 @@ module Puppet
       nil
     end
 
-    # Load a file and using the passed in rules hash load the 
+    # Load a file and using the passed in rules hash load the
     # rules contained therein.
     def load_rules_from_file(rules, file_name, action)
       if File.exist?(file_name)
@@ -814,7 +814,7 @@ module Puppet
       end
 
       if value(:uid_owner).to_s != ""
-        strings[:uid_owner] = " -m owner --uid-owner " + value(:uid_owner).to_s 
+        strings[:uid_owner] = " -m owner --uid-owner " + value(:uid_owner).to_s
       end
 
       if value(:limit).to_s != ""
@@ -900,13 +900,18 @@ module Puppet
         if value(:redirect).to_s != ""
           strings[:redirect] = " --to-ports " + value(:redirect).to_s
         end
+      elsif value(:jump).to_s == "NOTRACK"
+        if value(:table).to_s != "raw"
+          invalidrule = true
+          err("NOTRACK only applies to table 'raw'.")
+        end
       end
 
       chain_prio = @@chain_order[value(:chain).to_s]
 
       # Generate a rule entry for each source permutation.
       sources.each { |source|
-        
+
         # Build a string of arguments in the required order.
         rule_string = "%s" * 21 % [
           strings[:table],
@@ -932,7 +937,7 @@ module Puppet
           strings[:log_prefix],
           strings[:redirect]
         ]
-        
+
         debug("iptables param: #{rule_string}")
         if invalidrule != true
           @@rules[table].push({
