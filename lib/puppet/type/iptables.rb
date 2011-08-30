@@ -292,7 +292,7 @@ module Puppet
 
           name = self.matched(l.scan(/--comment (\S+)/))
 
-          limit = self.matched(l.scan(/--limit (\S+)/))
+          limit = self.matched(l.scan(/-m --limit (\S+)/))
           limit = "" unless limit
 
           burst = self.matched(l.scan(/--limit-burst (\S+)/))
