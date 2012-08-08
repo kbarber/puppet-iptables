@@ -765,6 +765,7 @@ module Puppet
               when "timestamp-reply" then "14"
               when "address-mask-request" then "17"
               when "address-mask-reply" then "18"
+              when "any" then "any"
               else ""
             end
           end
